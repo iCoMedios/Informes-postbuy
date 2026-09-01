@@ -334,12 +334,12 @@
     <div class="grid g-4">
       <div class="field"><label>Emisiones <span class="en">· Total plays</span></label><input id="k_plays" type="text" placeholder="76.400" oninput="recalcular()"></div>
       <div class="field"><label>Impresiones <span class="en">· Impressions</span></label><input id="k_impr" type="text" placeholder="1.490.000" oninput="recalcular()"></div>
-      <div class="field"><label>¿Incluir conteo de vehículos? <span class="en">· Vehicle count</span></label>
+      <div class="field"><label>Tipo de pantalla <span class="en">· Screen type</span></label>
         <select id="f_audience_mode" onchange="actualizarModoAudiencia()">
-          <option value="no">No incluir</option>
-          <option value="vehiculos">Sí, incluir conteo de vehículos</option>
+          <option value="peatonal">Peatonal · Género</option>
+          <option value="vehiculos">Vehicular · Conteo de vehículos</option>
         </select>
-        <div class="sub" id="sub_audience_mode">Actívalo solo si la medición incluye conteo y tipo de vehículo.</div>
+        <div class="sub" id="sub_audience_mode">Define si la pantalla mide audiencia peatonal (género) o vehicular (conteo de vehículos).</div>
       </div>
       <div class="field" id="campo_audience"><label id="lbl_audience">Conteo de vehículos <span class="en">· Vehicle count</span></label><input id="k_audience" type="text" placeholder="Ej. 245.800" oninput="recalcular()"><div class="sub" id="sub_audience">Número de vehículos detectados por el sensor.</div></div>
       <div class="field"><label>Permanencia <span class="en">· Avg. dwell time</span></label><input id="k_dwell" type="text" placeholder="9,10" oninput="recalcular()"></div>
@@ -350,7 +350,7 @@
     <div class="sec-head"><div class="sec-num">3</div><h2>Archivos de Quividi</h2><span class="hint">Botón <b>CSV</b> de cada widget en Quividi</span></div>
     <div class="drops">
       <label class="drop" id="drop_content"><div class="ic">▦</div><div class="dt"><b>Contenido por referencia</b><span>Footfall impressions per content · obligatorio</span></div><span class="req">Requerido</span><input type="file" accept=".csv,.xlsx,.xls,.xlsm,text/csv" onchange="cargarContent(this)"></label>
-      <label class="drop" id="drop_gender"><div class="ic">▰</div><div class="dt"><b id="drop_profile_title">Tipo de vehículo</b><span id="drop_profile_sub">Vehicle type split · recomendado</span></div><span class="req">Opcional</span><input id="f_profile_file" type="file" accept=".csv,.xlsx,.xls,.xlsm,text/csv" onchange="cargarPerfilAudiencia(this)"></label>
+      <label class="drop" id="drop_gender"><div class="ic">◑</div><div class="dt"><b id="drop_profile_title">Género</b><span id="drop_profile_sub">Gender split · recomendado</span></div><span class="req">Opcional</span><input id="f_profile_file" type="file" accept=".csv,.xlsx,.xls,.xlsm,text/csv" onchange="cargarPerfilAudiencia(this)"></label>
       <label class="drop" id="drop_diario"><div class="ic">▥</div><div class="dt"><b>Entrega por día</b><span>Dashboard DÍAS · plays/impresiones por día</span></div><span class="req">Opcional</span><input type="file" accept=".csv,.xlsx,.xls,.xlsm,text/csv" onchange="cargarDiario(this)"></label>
       <label class="drop" id="drop_extra"><div class="ic">▤</div><div class="dt"><b>Entrega por hora</b><span>Dashboard HORAS · plays/impresiones por franja</span></div><span class="req">Opcional</span><input type="file" accept=".csv,.xlsx,.xls,.xlsm,text/csv" onchange="cargarHora(this)"></label>
     </div>
@@ -443,19 +443,24 @@ function fmt(n){if(isNaN(n))return '—';var neg=n<0;return (neg?'-':'')+agrupar
 function fmt1(n){if(isNaN(n))return '—';var neg=n<0;n=Math.abs(n);var r=Math.round(n*10)/10,ent=Math.floor(r),dec=Math.round((r-ent)*10);if(dec>=10){ent+=1;dec=0;}return (neg?'-':'')+agrupar(String(ent))+','+dec;}
 function fmtCOP(n){if(isNaN(n))return '—';return '$'+agrupar(String(Math.round(n)));}
 function num(id){var el=document.getElementById(id);return el?parseNum(el.value):NaN;}
-function modoAudiencia(){var e=document.getElementById('f_audience_mode');return e?e.value:'no';}
+function modoAudiencia(){var e=document.getElementById('f_audience_mode');return e?e.value:'peatonal';}
 function audienciaLabel(){return modoAudiencia()==='vehiculos'?'Conteo de vehículos':'Vistas únicas';}
 function audienciaLabelEn(){return modoAudiencia()==='vehiculos'?'Vehicle count':'Unique sessions';}
 function audienciaValor(){return num('k_audience');}
 function actualizarModoAudiencia(){
   var veh=modoAudiencia()==='vehiculos';
-  var campo=document.getElementById('campo_audience'),drop=document.getElementById('drop_gender');
+  var campo=document.getElementById('campo_audience');
+  var title=document.getElementById('drop_profile_title'),dsub=document.getElementById('drop_profile_sub'),drop=document.getElementById('drop_gender');
   if(campo)campo.style.display=veh?'':'none';
-  if(drop)drop.style.display=veh?'':'none';
   if(!veh){
     var inp=document.getElementById('k_audience');if(inp)inp.value='';
     STATE.vehiculos=null;
+  }else{
+    STATE.genero=null;
   }
+  if(title)title.textContent=veh?'Tipo de vehículo':'Género';
+  if(dsub)dsub.textContent=veh?'Vehicle type split · recomendado':'Gender split · recomendado';
+  if(drop)drop.querySelector('.ic').textContent=veh?'▰':'◑';
   generarAnalisis();
   recalcular();
 }
@@ -746,7 +751,7 @@ function cargarVehiculos(input){
   });
 }
 function cargarPerfilAudiencia(input){
-  if(modoAudiencia()==='vehiculos')cargarVehiculos(input);
+  if(modoAudiencia()==='vehiculos')cargarVehiculos(input);else cargarGenero(input);
 }
 function parseSerieTiempo(rows){
   var head=(rows[0]||[]).map(function(c){return (c||'').toLowerCase();});
@@ -950,7 +955,7 @@ function generarAnalisis(force){
   var p=[];
   var impr=num('k_impr')||tot.ti;
   p.push('La campaña '+cli+(fchas?', desarrollada '+fchas+',':'')+' tuvo presencia en algunas pantallas del circuito iCo'+(isNaN(impr)||!impr?'.':', alcanzando un total de '+fmt(impr)+' impresiones.'));
-  if(modoAudiencia()==='vehiculos'&&vtypes&&vtypes.length){var vp=vehiculoPrincipal();p.push('La audiencia vehicular se distribuyó por tipo de vehículo; la categoría con mayor participación fue '+vp.name+' con '+fmt1(vp.pct)+'%.');}
+  if(modoAudiencia()==='vehiculos'&&vtypes&&vtypes.length){var vp=vehiculoPrincipal();p.push('La audiencia vehicular se distribuyó por tipo de vehículo; la categoría con mayor participación fue '+vp.name+' con '+fmt1(vp.pct)+'%.');}else if(g)p.push('La audiencia se compuso en un '+fmt1(g.m)+'% de mujeres y un '+fmt1(g.h)+'% de hombres.');
   if(!isNaN(tot.tpe))p.push('El tiempo promedio de permanencia fue de '+fmt1(tot.tpe)+' segundos, un indicador favorable de exposición.');
   var m=metricas();
   if(m.frecuencia!=null&&m.alcance!=null){p.push(modoAudiencia()==='vehiculos'?'Se registraron '+fmt(m.alcance)+' vehículos, con una frecuencia media de '+fmt1(m.frecuencia)+' impactos por vehículo.':'Se alcanzó a '+fmt(m.alcance)+' personas distintas, con una frecuencia media de '+fmt1(m.frecuencia)+' impactos por persona.');}
@@ -971,8 +976,8 @@ CONTEXTO:
 - No uses información externa ni conocimiento previo del circuito.
 
 AUDIENCIA:
-- Si se incluyó conteo de vehículos: interpreta conteo de vehículos como volumen detectado y tipo de vehículo cuando esté disponible.
-- Si NO se incluyó conteo de vehículos: no menciones vistas únicas, sesiones, género ni tipo de vehículo; esas métricas no fueron medidas en esta campaña.
+- Si la pantalla es PEATONAL: interpreta género (hombres/mujeres) cuando esté disponible. NO hables de vehículos en este modo.
+- Si la pantalla es VEHICULAR: interpreta conteo de vehículos como volumen detectado y tipo de vehículo cuando esté disponible. NO hables de género en este modo.
 
 MÉTRICAS:
 - Emisiones: veces que salió el contenido.
@@ -1016,7 +1021,7 @@ function recolectarDatos(){
   if(m.impr>0&&m.plays>0)L.push('Espectadores promedio por reproducción: '+fmt1(m.impr/m.plays)+' (impresiones ÷ reproducciones)');
   if(m.imprDia!=null)L.push('Impresiones promedio por día: '+fmt(m.imprDia));
   L.push('Cumplimiento: '+fmt(entregado)+' entregadas vs '+fmt(prom)+' garantizadas = '+pct+'%');var __v=entregado-prom;if(prom>0&&__v>0)L.push('Valor agregado (optimización): +'+fmt(__v)+' salidas entregadas por encima de lo garantizado (+'+Math.round(__v/prom*100)+'%), sin costo extra para el cliente.');else if(prom>0&&__v<0)L.push('Entrega por debajo de lo garantizado: '+fmt(-__v)+' salidas menos.');if(prom>0&&__v!==0){var __st=incluidas().reduce(function(a,f){return a+tarifaEstacion(f);},0),__val=Math.round(__st*Math.abs(__v)/prom);if(__val>0)L.push((__v>0?'Optimización en pesos: $':'Pérdida estimada en pesos: $')+fmt(__val)+' ('+Math.round(Math.abs(__v)/prom*100)+'% de '+(__v>0?'sobre-entrega':'incumplimiento')+' frente a lo garantizado). Destácalo.');}
-  if(modoAudiencia()==='vehiculos'&&vtypes){L.push('Tipo de vehículo: '+vtypes.map(function(v){return v.name+' '+fmt1(v.pct)+'% ('+fmt(v.count)+')';}).join(', '));}
+  if(modoAudiencia()==='vehiculos'&&vtypes){L.push('Tipo de vehículo: '+vtypes.map(function(v){return v.name+' '+fmt1(v.pct)+'% ('+fmt(v.count)+')';}).join(', '));}else if(g)L.push('Género: '+fmt1(g.h)+'% hombres / '+fmt1(g.m)+'% mujeres');
   var inc=incluidas();
   if(inc.length){
     L.push('Desempeño por referencia:');
@@ -1350,9 +1355,14 @@ function construirReporte(){
     
     
     (function(){
-      if(vehMode!=='vehiculos')return '';
+      if(vehMode==='vehiculos'){
+        return '<div class="r-sec">'+bt('elevator','Audiencia impactada')+
+          '<div class="chart-card audience-card"><h4>Distribución por tipo de vehículo</h4><div class="chart-body">'+vehiculoBloque(vtypes)+'</div></div>'+
+        '</div>';
+      }
+      var genInner=g?generoBloque(g):'<div style="font-size:11px;color:#9AA3AE;padding:20px 0;text-align:center">Carga el archivo de género.</div>';
       return '<div class="r-sec">'+bt('elevator','Audiencia impactada')+
-        '<div class="chart-card audience-card"><h4>Distribución por tipo de vehículo</h4><div class="chart-body">'+vehiculoBloque(vtypes)+'</div></div>'+
+        '<div class="chart-card audience-card"><h4>Distribución por género</h4><div class="chart-body">'+genInner+'</div></div>'+
       '</div>';
     })()+
     '<div class="r-sec">'+bt('screen','Distribución por referencia')+
@@ -1369,7 +1379,7 @@ function construirReporte(){
     })()+
     '</div>'+
     '<div class="r-sec">'+bt('doc','Análisis de la campaña')+'<div class="r-anal-box"><div class="r-analisis">'+(document.getElementById('f_analisis').value||'Genera el análisis con IA o el borrador automático.').replace(/</g,'&lt;')+'</div></div></div>'+'<div class="r-sec">'+bt('book','Glosario')+'<div class="glist">'+
-      gli('play','Emisión<span class="glen"> · Plays</span>','Veces que el contenido salió al aire en la pantalla.')+gli('eye','Impresión<span class="glen"> · Impressions</span>','Personas o vehículos frente a la pantalla con oportunidad de ver el contenido.')+(vehMode==='vehiculos'?gli('user','Conteo de vehículos<span class="glen"> · Vehicle count</span>','Vehículos detectados por el sensor; permite dimensionar la audiencia vehicular frente a la pantalla.'):'')+gli('clock','Permanencia<span class="glen"> · Dwell time</span>','Tiempo promedio que una persona estuvo frente a la pantalla.')+gli('cal','Impresiones por día y hora','Cómo se repartió la entrega a lo largo de la campaña: en qué días y franjas horarias se concentró el impacto.')+gli('target','Optimización<span class="glen"> · Valor agregado</span>','Emisiones entregadas por encima de lo garantizado, sin costo extra, y su valor en pesos.')+'</div></div>'+
+      gli('play','Emisión<span class="glen"> · Plays</span>','Veces que el contenido salió al aire en la pantalla.')+gli('eye','Impresión<span class="glen"> · Impressions</span>','Personas o vehículos frente a la pantalla con oportunidad de ver el contenido.')+(vehMode==='vehiculos'?gli('user','Conteo de vehículos<span class="glen"> · Vehicle count</span>','Vehículos detectados por el sensor; permite dimensionar la audiencia vehicular frente a la pantalla.'):gli('user','Género<span class="glen"> · Gender split</span>','Distribución de la audiencia por género detectada por el sensor.'))+gli('clock','Permanencia<span class="glen"> · Dwell time</span>','Tiempo promedio que una persona estuvo frente a la pantalla.')+gli('cal','Impresiones por día y hora','Cómo se repartió la entrega a lo largo de la campaña: en qué días y franjas horarias se concentró el impacto.')+gli('target','Optimización<span class="glen"> · Valor agregado</span>','Emisiones entregadas por encima de lo garantizado, sin costo extra, y su valor en pesos.')+'</div></div>'+
     '</div>'+foot(2)+'</div>';
   return pg1+pg2;
 }
