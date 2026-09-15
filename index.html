@@ -327,6 +327,9 @@
       <div class="field"><label>Fecha de cierre</label><input id="f_fin" type="date" oninput="recalcular()"></div>
       <div class="field calc"><label>Días de campaña <span class="en">· automático</span></label><input id="f_dias" type="text" readonly placeholder="—"></div>
     </div>
+    <div id="rangos_extra"></div>
+    <button type="button" class="btn btn-ghost" style="margin-top:12px" onclick="agregarRango()">+ Agregar rango de fechas</button>
+    <div class="sub">Se incluyen el día de inicio y el de cierre. Los días coincidentes entre rangos se cuentan una sola vez.</div>
   </section>
 
   <section class="card">
@@ -358,19 +361,23 @@
   </section>
 
   <section class="card" id="sec_cuadro" style="display:none">
-    <div class="sec-head"><div class="sec-num">4</div><h2>Cuadro de referencias</h2><span class="hint">Edita los nombres y desmarca lo que no quieras incluir</span></div>
+    <div class="sec-head"><div class="sec-num">4</div><h2>Cuadro de referencias</h2><span class="hint">Carga automática editable: modifica nombres y cifras, agrega o elimina referencias</span></div>
     <div class="tbl-wrap"><table id="tabla">
-      <thead><tr><th style="width:42px">Incluir</th><th>Referencia</th><th class="num">Emisiones</th><th class="num">Impresiones</th><th class="num" style="width:120px">Tarifa</th><th style="width:140px">Calidad</th></tr></thead>
+      <thead><tr><th style="width:42px">Incluir</th><th>Referencia</th><th class="num">Emisiones</th><th class="num">Impresiones</th><th style="width:140px">Calidad</th><th>Acciones</th></tr></thead>
       <tbody id="tbody"></tbody>
-      <tfoot><tr><td></td><td>Total incluido</td><td class="num" id="t_plays">—</td><td class="num" id="t_impr">—</td><td class="num" id="t_tarifa">—</td><td></td></tr></tfoot>
+      <tfoot><tr><td></td><td>Total incluido</td><td class="num" id="t_plays">—</td><td class="num" id="t_impr">—</td><td></td><td></td></tr></tfoot>
     </table></div>
     <div class="quality" id="quality"></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+      <button type="button" class="btn btn-ghost" onclick="agregarReferencia()">+ Agregar referencia</button>
+      <button type="button" class="btn btn-ghost" onclick="unificarReferencias()">Unificar referencias incluidas</button>
+    </div>
   </section>
 
   <section class="card" id="sec_cpm" style="display:none">
-    <div class="sec-head"><div class="sec-num">4b</div><h2>Cuadro cuantitativo · CPM <span class="en">interno</span></h2><span class="hint">Tarifa por pantalla (del tarifario, editable) y garantizados. Multiplicador, optimización, CPI y CPM se calculan solos.</span></div>
+    <div class="sec-head"><div class="sec-num">4b</div><h2>Cuadro cuantitativo <span class="en">interno</span></h2><span class="hint">Garantizados editables. El multiplicador y la variación de emisiones se calculan solos.</span></div>
     <div class="tbl-wrap"><table id="cuadro" class="cuadro-tbl">
-      <thead><tr><th>Site</th><th>Tarifa (COP)</th><th>Garantizados</th><th class="num"># SPOT</th><th class="num">Impresiones</th><th class="num">Mult.</th><th class="num">Optim.</th><th class="num">CPI</th><th class="num">CPM</th></tr></thead>
+      <thead><tr><th>Site</th><th>Garantizados</th><th class="num"># SPOT</th><th class="num">Impresiones</th><th class="num">Mult.</th><th class="num">Optim.</th></tr></thead>
       <tbody id="cuadro_body"></tbody>
       <tfoot><tr id="cuadro_foot"></tr></tfoot>
     </table></div>
@@ -441,7 +448,6 @@ function parseNum(raw){
 function agrupar(s){return s.replace(/\B(?=(\d{3})+(?!\d))/g,'.');}            /* 42120 -> 42.120 */
 function fmt(n){if(isNaN(n))return '—';var neg=n<0;return (neg?'-':'')+agrupar(String(Math.round(Math.abs(n))));}
 function fmt1(n){if(isNaN(n))return '—';var neg=n<0;n=Math.abs(n);var r=Math.round(n*10)/10,ent=Math.floor(r),dec=Math.round((r-ent)*10);if(dec>=10){ent+=1;dec=0;}return (neg?'-':'')+agrupar(String(ent))+','+dec;}
-function fmtCOP(n){if(isNaN(n))return '—';return '$'+agrupar(String(Math.round(n)));}
 function num(id){var el=document.getElementById(id);return el?parseNum(el.value):NaN;}
 function modoAudiencia(){var e=document.getElementById('f_audience_mode');return e?e.value:'peatonal';}
 function audienciaLabel(){return modoAudiencia()==='vehiculos'?'Conteo de vehículos':'Vistas únicas';}
@@ -465,30 +471,17 @@ function actualizarModoAudiencia(){
   recalcular();
 }
 function metricas(){
-  var impr=num('k_impr'),views=audienciaValor(),plays=num('k_plays'),tarifa=num('f_tarifa'),dias=getDias(),un=parseInt(document.getElementById('f_unidades').value,10);
-  var valorTarifa=(tarifa>0&&un>0&&dias>0)?tarifa*un*(dias/30):null;
+  var impr=num('k_impr'),views=audienciaValor(),plays=num('k_plays'),dias=getDias(),un=parseInt(document.getElementById('f_unidades').value,10);
   var sel=document.getElementById('f_tipo');
   return {
     impr:impr, views:views, plays:plays, dias:dias,
     alcance:isNaN(views)?null:views,
     frecuencia:(!isNaN(impr)&&views>0)?impr/views:null,
     imprDia:(!isNaN(impr)&&dias>0)?impr/dias:null,
-    valorTarifa:valorTarifa,
-    cpm:(impr>0&&valorTarifa)?valorTarifa/impr*1000:null,
-    costoAlcance:(views>0&&valorTarifa)?valorTarifa/views:null,
     tipo:sel?sel.value:'custom'
   };
 }
-function updateTarifaLabels(){
-  var custom=document.getElementById('f_tipo').value==='custom';
-  var lbl=document.getElementById('lbl_tarifa'),sub=document.getElementById('sub_tarifa');
-  if(custom){lbl.innerHTML='Tarifa mensual de lista <span class="en">· paquete completo (COP)</span>';sub.textContent='Mensual de lista de TODOS los elementos juntos, no lo que pagó el cliente.';}
-  else{lbl.innerHTML='Tarifa mensual por unidad <span class="en">· COP</span>';sub.textContent='Tarifa de lista de una sola pantalla, no lo que pagó el cliente.';}
-}
-function setTarifa(){updateTarifaLabels();recalcular();}
-function onTarifaEdit(){document.getElementById('f_tipo').value='custom';updateTarifaLabels();recalcular();}
 
-/* iconos SVG (stroke, sin librería) */
 var ICONS={
   repeat:'<path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
   group:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
@@ -563,10 +556,10 @@ function cargarContent(input){
     for(var r=idx.headerRow+1;r<rows.length;r++){
       var row=rows[r],nc=(row[idx.content]||'').trim();
       if(!nc||/^total/i.test(nc))continue;
-      var pl=parseNum(row[idx.plays]),im=parseNum(row[idx.impr]),pe=idx.perm>=0?parseNum(row[idx.perm]):NaN,ta=idx.tar>=0?parseNum(row[idx.tar]):NaN,ga=idx.gar>=0?parseNum(row[idx.gar]):NaN;
+      var pl=parseNum(row[idx.plays]),im=parseNum(row[idx.impr]),pe=idx.perm>=0?parseNum(row[idx.perm]):NaN,ga=idx.gar>=0?parseNum(row[idx.gar]):NaN;
       if(isNaN(pl)&&isNaN(im))continue;
       var sus=(pl>=CONFIG.FLAG_PLAYS_MIN)&&(!(im>=pl*CONFIG.FLAG_RATIO));
-      filas.push({crudo:nc,nombre:limpiarNombre(nc),plays:pl||0,impr:im||0,perm:isNaN(pe)?null:pe,tarifa:isNaN(ta)?null:ta,garant:isNaN(ga)?null:ga,incluir:!sus,flag:sus});
+      filas.push({crudo:nc,nombre:limpiarNombre(nc),plays:pl||0,impr:im||0,perm:isNaN(pe)?null:pe,garant:isNaN(ga)?null:ga,incluir:!sus,flag:sus});
     }
     if(!filas.length){estado('El archivo se leyó pero no hallé filas de contenido.',true);return;}
     STATE.filas=filas;marcarDrop('drop_content',f.name);pintarTabla();generarAnalisis();recalcular();
@@ -574,7 +567,7 @@ function cargarContent(input){
   });
 }
 function detCols(rows){
-  var R={headerRow:-1,content:-1,plays:-1,impr:-1,perm:-1,tar:-1,gar:-1};
+  var R={headerRow:-1,content:-1,plays:-1,impr:-1,perm:-1,gar:-1};
   var claveCont=['content','contenido','referencia','reference','media','creative'];
   var claveContFb=['site','sitio','pantalla','estacion','estación','nombre','name'];
   function metrica(c){return (c.indexOf('play')>=0||c.indexOf('reproduc')>=0||c.indexOf('spot')>=0||c.indexOf('impres')>=0||c.indexOf('impression')>=0||c.indexOf('footfall')>=0)&&c.indexOf('1000')<0;}
@@ -589,7 +582,6 @@ function detCols(rows){
         if(R.plays<0&&(c.indexOf('play')>=0||c.indexOf('reproduc')>=0||c.indexOf('spot')>=0)&&c.indexOf('1000')<0&&c.indexOf('garant')<0&&c.indexOf('guarant')<0&&c.indexOf('promet')<0)R.plays=i;
         if(R.impr<0&&(c.indexOf('impres')>=0||c.indexOf('impression')>=0||c.indexOf('footfall')>=0)&&c.indexOf('1000')<0)R.impr=i;
         if(R.perm<0&&(c.indexOf('presence')>=0||c.indexOf('dwell')>=0||c.indexOf('permanen')>=0||c.indexOf('presencia')>=0))R.perm=i;
-        if(R.tar<0&&(c.indexOf('tarifa')>=0||c.indexOf('tariff')>=0||c.indexOf('rate')>=0)&&c.indexOf('cpm')<0&&c.indexOf('cpi')<0&&c.indexOf('1000')<0&&c.indexOf('mil')<0&&c.indexOf('impres')<0)R.tar=i;
         if(R.gar<0&&(c.indexOf('garant')>=0||c.indexOf('guarant')>=0)&&c.indexOf('1000')<0)R.gar=i;
       });
       break;
@@ -792,32 +784,74 @@ function pintarTabla(){
     var tr=document.createElement('tr');tr.className=(f.incluir?'':'off')+(f.flag?' flag':'');
     tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="chk" '+(f.incluir?'checked':'')+' onchange="toggleFila('+i+',this.checked)"></td>'+
       '<td class="nom"><input type="text" value="'+escA(f.nombre)+'" oninput="renombrar('+i+',this.value)"></td>'+
-      '<td class="num">'+fmt(f.plays)+'</td><td class="num">'+fmt(f.impr)+'</td>'+'<td class="num"><input type="number" class="tar-in" value="'+tarifaEstacion(f)+'" oninput="setTarifaFila('+i+',this.value)" title="Tarifa publicada — edítala"></td>'+
+      '<td class="num"><input type="text" inputmode="numeric" class="cq" value="'+fmt(f.plays)+'" oninput="editarReferencia('+i+',\'plays\',this)"></td><td class="num"><input type="text" inputmode="numeric" class="cq" value="'+fmt(f.impr)+'" oninput="editarReferencia('+i+',\'impr\',this)"></td>'+
       
-      '<td>'+(f.flag?'<span class="warn-pill" title="Muchas reproducciones y casi cero impresiones: posible cámara caída.">⚠ Medición caída</span>':'<span style="color:var(--ok);font-size:12px">✓ OK</span>')+'</td>';
+      '<td>'+(f.flag?'<span class="warn-pill" title="Muchas reproducciones y casi cero impresiones: posible cámara caída.">⚠ Medición caída</span>':'<span style="color:var(--ok);font-size:12px">✓ OK</span>')+'</td><td><button type="button" class="btn btn-ghost" onclick="eliminarReferencia('+i+')">Eliminar</button></td>';
     tb.appendChild(tr);
   });
   document.getElementById('sec_cuadro').style.display='';actualizarTotales();pintarCuadro();
 }
 function escA(s){return String(s).replace(/"/g,'&quot;');}
 function toggleFila(i,v){STATE.filas[i].incluir=v;pintarTabla();generarAnalisis();recalcular();}
-function renombrar(i,v){STATE.filas[i].nombre=v;}
-function setTarifaFila(i,v){if(STATE.filas[i]){STATE.filas[i].tarifa=parseNum(v);actualizarTotales();pintarCuadro();}}
+function renombrar(i,v){STATE.filas[i].nombre=v;pintarCuadro();generarAnalisis();}
+function editarReferencia(i,campo,input){
+  var v=parseNum(input.value);
+  if(!isFinite(v)||v<0||Math.floor(v)!==v){input.setCustomValidity('Ingresa un número entero mayor o igual a cero.');document.getElementById('btn_pdf').disabled=true;return;}
+  input.setCustomValidity('');STATE.filas[i][campo]=v;sincronizarIndicadores();recalcular();generarAnalisis();
+}
+function agregarReferencia(){
+  STATE.filas.push({crudo:'Nueva referencia',nombre:'Nueva referencia',plays:0,impr:0,perm:null,garant:null,incluir:true,flag:false});
+  pintarTabla();recalcular();generarAnalisis();
+}
+function eliminarReferencia(i){STATE.filas.splice(i,1);pintarTabla();sincronizarIndicadores();recalcular();generarAnalisis();}
+function sincronizarIndicadores(){
+  var tot=actualizarTotales();
+  document.getElementById('k_plays').value=fmt(tot.tp);
+  document.getElementById('k_impr').value=fmt(tot.ti);
+}
+function unificarReferencias(){
+  var inc=incluidas();if(inc.length<2)return;
+  var tot=actualizarTotales(),gar=inc.reduce(function(a,f){return a+garantEstacion(f);},0);
+  STATE.filas=STATE.filas.filter(function(f){return !f.incluir;});
+  STATE.filas.push({crudo:'Referencia unificada',nombre:gv('f_campana')||'Referencia unificada',plays:tot.tp,impr:tot.ti,perm:isNaN(tot.tpe)?null:tot.tpe,garant:gar,incluir:true,flag:false});
+  pintarTabla();recalcular();generarAnalisis();
+}
 function incluidas(){return STATE.filas.filter(function(f){return f.incluir;});}
 function actualizarTotales(){
   var inc=incluidas();
   var tp=inc.reduce(function(a,f){return a+f.plays;},0),ti=inc.reduce(function(a,f){return a+f.impr;},0);
   var pe=inc.filter(function(f){return f.perm!=null;}),tpe=pe.length?pe.reduce(function(a,f){return a+f.perm;},0)/pe.length:NaN;
   document.getElementById('t_plays').textContent=fmt(tp);
-  document.getElementById('t_impr').textContent=fmt(ti);var __tt=inc.reduce(function(a,f){return a+tarifaEstacion(f);},0),__te=document.getElementById('t_tarifa');if(__te)__te.textContent=__tt>0?fmtCOP(__tt):'—';
+  document.getElementById('t_impr').textContent=fmt(ti);
   var q=document.getElementById('quality'),off=STATE.filas.length-inc.length,fl=STATE.filas.filter(function(f){return f.flag;}).length;
   q.innerHTML='<span class="q">'+inc.length+' referencias incluidas</span>'+(off>0?'<span class="q">'+off+' excluidas</span>':'')+(fl>0?'<span class="q warn">⚠ '+fl+' con posible medición caída</span>':'');
   return {tp:tp,ti:ti,tpe:tpe};
 }
+function agregarRango(){
+  var row=document.createElement('div');row.className='grid g-3 rango-extra';row.style.marginTop='12px';
+  row.innerHTML='<div class="field"><label>Fecha de inicio</label><input type="date" class="rango-inicio" oninput="recalcular()"></div><div class="field"><label>Fecha de cierre</label><input type="date" class="rango-fin" oninput="recalcular()"></div><div class="field"><label>Rango adicional</label><button type="button" class="btn btn-ghost" onclick="this.closest(\'.rango-extra\').remove();recalcular()">Eliminar rango</button></div>';
+  document.getElementById('rangos_extra').appendChild(row);recalcular();
+}
+function obtenerRangos(){
+  var rangos=[{inicio:gv('f_inicio'),fin:gv('f_fin')}];
+  document.querySelectorAll('.rango-extra').forEach(function(row){rangos.push({inicio:row.querySelector('.rango-inicio').value,fin:row.querySelector('.rango-fin').value});});
+  return rangos;
+}
 function getDias(){
-  var ini=document.getElementById('f_inicio').value,fin=document.getElementById('f_fin').value;
-  if(ini&&fin){var d=Math.round((new Date(fin)-new Date(ini))/86400000)+1;document.getElementById('f_dias').value=(d>0?d+' días':'revisar fechas');return d;}
-  document.getElementById('f_dias').value='';return NaN;
+  var rangos=obtenerRangos(),intervalos=[],salida=document.getElementById('f_dias');
+  for(var i=0;i<rangos.length;i++){
+    var r=rangos[i],a=Date.parse(r.inicio),b=Date.parse(r.fin);
+    if(!r.inicio||!r.fin||!isFinite(a)||!isFinite(b)||b<a){salida.value=r.inicio||r.fin||rangos.length>1?'Revisa los rangos de fechas':'';return NaN;}
+    intervalos.push([a/86400000,b/86400000]);
+  }
+  intervalos.sort(function(a,b){return a[0]-b[0];});
+  var total=0,ini=intervalos[0][0],fin=intervalos[0][1];
+  intervalos.slice(1).forEach(function(r){if(r[0]<=fin+1){fin=Math.max(fin,r[1]);}else{total+=fin-ini+1;ini=r[0];fin=r[1];}});
+  total+=fin-ini+1;salida.value=total+' días';return total;
+}
+function periodoTexto(){
+  if(!(getDias()>0))return '—';
+  return obtenerRangos().map(function(r){return fechaTxt(r.inicio)+' – '+fechaTxt(r.fin);}).join('; ');
 }
 function actualizarCumplimiento(){
   var cont=document.getElementById('cumpl'),vac=document.getElementById('cumpl_vacio');
@@ -842,8 +876,8 @@ function actualizarCumplimiento(){
 function recalcular(){
   var dias=getDias(),unidades=parseInt(document.getElementById('f_unidades').value,10);
   actualizarCumplimiento();
-  document.getElementById('btn_pdf').disabled=!(unidades>0&&dias>0&&STATE.filas.length>0);
-  actualizarTarifaBox(dias,unidades);
+  document.getElementById('btn_pdf').disabled=!(unidades>0&&dias>0&&incluidas().length>0&&!document.querySelector('#tabla input:invalid'));
+  generarAnalisis();
   pintarCuadro();
 }
 function editProm(){
@@ -852,34 +886,30 @@ function editProm(){
   STATE.promManual=(!isNaN(v)&&v>0);
   actualizarCumplimiento();
 }
-/* ===================== CUADRO CUANTITATIVO (CPM, interno) ===================== */
-function tarifaEstacion(f){return f.tarifa!=null?f.tarifa:0;}
+/* ===================== CUADRO CUANTITATIVO (interno) ===================== */
 function garantEstacion(f){return f.garant!=null?f.garant:0;}
 function cuadroFila(f){
-  var tar=tarifaEstacion(f),gar=garantEstacion(f),spot=f.plays||0,impr=f.impr||0;
-  return {tar:tar,gar:gar,spot:spot,impr:impr,mult:spot>0?impr/spot:0,optim:gar>0?(spot-gar)/gar:0,cpi:impr>0?tar/impr:0,cpm:impr>0?tar/impr*1000:0};
+  var gar=garantEstacion(f),spot=f.plays||0,impr=f.impr||0;
+  return {gar:gar,spot:spot,impr:impr,mult:spot>0?impr/spot:0,optim:gar>0?(spot-gar)/gar:0};
 }
-function pesos2(v){return '$'+v.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
 function pintarCuadro(){
   var tb=document.getElementById('cuadro_body');if(!tb)return;
   var inc=incluidas(),sec=document.getElementById('sec_cpm');
   if(!inc.length){if(sec)sec.style.display='none';return;}
   if(sec)sec.style.display='';tb.innerHTML='';
-  var T={tar:0,gar:0,spot:0,impr:0};
+  var T={gar:0,spot:0,impr:0};
   STATE.filas.forEach(function(f,i){
-    if(!f.incluir)return;var d=cuadroFila(f);T.tar+=d.tar;T.gar+=d.gar;T.spot+=d.spot;T.impr+=d.impr;
+    if(!f.incluir)return;var d=cuadroFila(f);T.gar+=d.gar;T.spot+=d.spot;T.impr+=d.impr;
     var tr=document.createElement('tr');
     tr.innerHTML='<td class="cq-nom">'+escA(f.nombre)+'</td>'+
-      '<td><input class="cq" type="text" value="'+agrupar(String(Math.round(d.tar)))+'" oninput="editCuadro('+i+',\'tarifa\',this.value)"></td>'+
       '<td><input class="cq" type="text" value="'+agrupar(String(Math.round(d.gar)))+'" oninput="editCuadro('+i+',\'garant\',this.value)"></td>'+
       '<td class="num">'+fmt(d.spot)+'</td><td class="num">'+fmt(d.impr)+'</td>'+
       '<td class="num">'+fmt1(d.mult)+'</td>'+
-      '<td class="num '+(d.optim>=0?'pos':'neg')+'" id="cq_optim_'+i+'">'+(d.optim>=0?'+':'')+fmt1(d.optim*100)+'%</td>'+
-      '<td class="num">'+pesos2(d.cpi)+'</td><td class="num">'+fmtCOP(d.cpm)+'</td>';
+      '<td class="num '+(d.optim>=0?'pos':'neg')+'" id="cq_optim_'+i+'">'+(d.optim>=0?'+':'')+fmt1(d.optim*100)+'%</td>';
     tb.appendChild(tr);
   });
-  var tm=T.spot>0?T.impr/T.spot:0,to=T.gar>0?(T.spot-T.gar)/T.gar:0,tci=T.impr>0?T.tar/T.impr:0;
-  document.getElementById('cuadro_foot').innerHTML='<td>Total</td><td class="num">'+fmtCOP(T.tar)+'</td><td class="num">'+fmt(T.gar)+'</td><td class="num">'+fmt(T.spot)+'</td><td class="num">'+fmt(T.impr)+'</td><td class="num">'+fmt1(tm)+'</td><td class="num '+(to>=0?'pos':'neg')+'">'+(to>=0?'+':'')+fmt1(to*100)+'%</td><td class="num">'+pesos2(tci)+'</td><td class="num">'+fmtCOP(tci*1000)+'</td>';
+  var tm=T.spot>0?T.impr/T.spot:0,to=T.gar>0?(T.spot-T.gar)/T.gar:0;
+  document.getElementById('cuadro_foot').innerHTML='<td>Total</td><td class="num">'+fmt(T.gar)+'</td><td class="num">'+fmt(T.spot)+'</td><td class="num">'+fmt(T.impr)+'</td><td class="num">'+fmt1(tm)+'</td><td class="num '+(to>=0?'pos':'neg')+'">'+(to>=0?'+':'')+fmt1(to*100)+'%</td>';
 }
 function editCuadro(i,campo,val){
   STATE.filas[i][campo]=parseNum(val);
@@ -905,38 +935,26 @@ function actualizarFilaCuadro(i){
   if(td){td.className='num '+(d.optim>=0?'pos':'neg');td.textContent=(d.optim>=0?'+':'')+fmt1(d.optim*100)+'%';}
 }
 function actualizarPieCuadro(){
-  var inc=incluidas(),T={tar:0,gar:0,spot:0,impr:0};
-  inc.forEach(function(f){var d=cuadroFila(f);T.tar+=d.tar;T.gar+=d.gar;T.spot+=d.spot;T.impr+=d.impr;});
-  var tm=T.spot>0?T.impr/T.spot:0,to=T.gar>0?(T.spot-T.gar)/T.gar:0,tci=T.impr>0?T.tar/T.impr:0;
+  var inc=incluidas(),T={gar:0,spot:0,impr:0};
+  inc.forEach(function(f){var d=cuadroFila(f);T.gar+=d.gar;T.spot+=d.spot;T.impr+=d.impr;});
+  var tm=T.spot>0?T.impr/T.spot:0,to=T.gar>0?(T.spot-T.gar)/T.gar:0;
   var foot=document.getElementById('cuadro_foot');
-  if(foot)foot.innerHTML='<td>Total</td><td class="num">'+fmtCOP(T.tar)+'</td><td class="num">'+fmt(T.gar)+'</td><td class="num">'+fmt(T.spot)+'</td><td class="num">'+fmt(T.impr)+'</td><td class="num">'+fmt1(tm)+'</td><td class="num '+(to>=0?'pos':'neg')+'">'+(to>=0?'+':'')+fmt1(to*100)+'%</td><td class="num">'+pesos2(tci)+'</td><td class="num">'+fmtCOP(tci*1000)+'</td>';
+  if(foot)foot.innerHTML='<td>Total</td><td class="num">'+fmt(T.gar)+'</td><td class="num">'+fmt(T.spot)+'</td><td class="num">'+fmt(T.impr)+'</td><td class="num">'+fmt1(tm)+'</td><td class="num '+(to>=0?'pos':'neg')+'">'+(to>=0?'+':'')+fmt1(to*100)+'%</td>';
 }
 function exportarCuadroExcel(){
   if(typeof XLSX==='undefined'){alert('No se pudo cargar el exportador.');return;}
   var inc=incluidas();if(!inc.length){alert('Carga primero los datos de la campaña.');return;}
-  var H=['','Site','Tarifa Publicada','Spot Garantizados','# SPOT','IMPRESSIONS','Multiplicador Impresiones','OPTIMIZACIÓN SPOT','CPI (COSTO X IMPRESSIONS)','CPM (COSTO X MIL IMPRESSIONS)'];
-  var aoa=[[],[],[],H],T={tar:0,gar:0,spot:0,impr:0};
-  inc.forEach(function(f){var d=cuadroFila(f);T.tar+=d.tar;T.gar+=d.gar;T.spot+=d.spot;T.impr+=d.impr;
-    aoa.push(['',f.nombre,d.tar,d.gar,d.spot,d.impr,d.mult,d.optim,d.cpi,d.cpm]);});
-  var tm=T.spot>0?T.impr/T.spot:0,to=T.gar>0?(T.spot-T.gar)/T.gar:0,tci=T.impr>0?T.tar/T.impr:0;
-  aoa.push(['','Total',T.tar,T.gar,T.spot,T.impr,tm,to,tci,tci*1000]);
+  var H=['','Site','Spot Garantizados','# SPOT','IMPRESSIONS','Multiplicador Impresiones','OPTIMIZACIÓN SPOT'];
+  var aoa=[[],[],[],H],T={gar:0,spot:0,impr:0};
+  inc.forEach(function(f){var d=cuadroFila(f);T.gar+=d.gar;T.spot+=d.spot;T.impr+=d.impr;
+    aoa.push(['',f.nombre,d.gar,d.spot,d.impr,d.mult,d.optim]);});
+  var tm=T.spot>0?T.impr/T.spot:0,to=T.gar>0?(T.spot-T.gar)/T.gar:0;
+  aoa.push(['','Total',T.gar,T.spot,T.impr,tm,to]);
   var wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),'PANTALLA');
-  var taoa=[['','SITE','ABREVIATURA','TARIFA']];
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(taoa),'Tarifario');
   XLSX.writeFile(wb,'Cuadro cuantitativo '+((gv('f_cliente')||'campaña').trim())+'.xlsx');
 }
-function actualizarTarifaBox(dias,un){
-  var box=document.getElementById('f_diaria');if(!box)return;
-  var tarifa=num('f_tarifa'),custom=document.getElementById('f_tipo').value==='custom';
-  if(!(tarifa>0)){box.innerHTML='Completa la tarifa mensual.';return;}
-  var diaria=tarifa/30;
-  var txt='Tarifa por día'+(custom?' (paquete)':' (por unidad)')+': <b>'+fmtCOP(diaria)+'</b>';
-  if(dias>0&&un>0){var valor=custom?diaria*dias:diaria*dias*un;
-    txt+='<br>Valor de lista de la pauta ('+dias+' día'+(dias>1?'s':'')+(custom?'':' × '+un+' u')+'): <span class="big">'+fmtCOP(valor)+'</span>';}
-  else{txt+='<br><span style="color:#9AA3AE">Faltan días y unidades para el valor total.</span>';}
-  box.innerHTML=txt;
-}
+
 function generoPct(){if(!STATE.genero)return null;var t=STATE.genero.male+STATE.genero.female;if(t<=0)return null;return {h:STATE.genero.male/t*100,m:STATE.genero.female/t*100};}
 function garantizadoActual(){var el=document.getElementById('c_prom');var manual=parseNum(el?el.value:'');return manual>0?manual:NaN;}
 function tiposVehiculo(){return (modoAudiencia()==='vehiculos'&&STATE.vehiculos&&STATE.vehiculos.length)?STATE.vehiculos:null;}
@@ -951,7 +969,7 @@ function generarAnalisis(force){
   var cli=document.getElementById('f_cliente').value||'la campaña';
   var ini=document.getElementById('f_inicio').value,fin=document.getElementById('f_fin').value;
   var tot=STATE.filas.length?actualizarTotales():{tp:NaN,ti:NaN,tpe:NaN};
-  var g=generoPct(),vtypes=tiposVehiculo(),fchas=(ini&&fin)?('entre el '+fechaTxt(ini)+' y el '+fechaTxt(fin)):'';
+  var g=generoPct(),vtypes=tiposVehiculo(),fchas=getDias()>0?('en los periodos '+periodoTexto()+' ('+getDias()+' días)'):'';
   var p=[];
   var impr=num('k_impr')||tot.ti;
   p.push('La campaña '+cli+(fchas?', desarrollada '+fchas+',':'')+' tuvo presencia en algunas pantallas del circuito iCo'+(isNaN(impr)||!impr?'.':', alcanzando un total de '+fmt(impr)+' impresiones.'));
@@ -984,7 +1002,7 @@ MÉTRICAS:
 - Impresiones: oportunidades de contacto/audiencia medidas por el sistema disponible.
 - Permanencia: tiempo promedio de exposición, cuando esté disponible.
 - Frecuencia (OTS): impresiones divididas entre alcance, únicamente si ambas métricas están disponibles y son comparables.
-- CPM, tarifa, optimización o pérdida económica: úsalos únicamente si aparecen explícitamente calculados o suministrados.
+- No solicites ni menciones importes, tarifas, CPM, CPI, optimización o pérdida económica. Describe el cumplimiento únicamente en emisiones y porcentajes.
 
 REGLAS ESTRICTAS:
 - Usa únicamente los datos entregados.
@@ -992,7 +1010,7 @@ REGLAS ESTRICTAS:
 - NUNCA asumas tarifas, emisiones garantizadas, unidades, duración, audiencia, frecuencia, CPM, permanencia, benchmarks o porcentajes.
 - Si un dato no está disponible, no lo menciones como si existiera.
 - No atribuyas características socioeconómicas a una ubicación si no están medidas o suministradas.
-- Si aparece una optimización o pérdida económica, utiliza exactamente el valor suministrado; no lo recalcules con supuestos propios.
+- No estimes valores en dinero.
 - Si hay datos por referencia/pantalla, compara únicamente con base en esos datos.
 - No afirmes recordación, engagement, intención de compra, visibilidad o resultados que no estén medidos.
 - Analiza relaciones entre las métricas disponibles y explica qué significan.
@@ -1006,12 +1024,12 @@ REGLAS ESTRICTAS:
 function gv(id){var e=document.getElementById(id);return e?e.value:'';}
 function recolectarDatos(){
   var m=metricas(),tot=actualizarTotales();
-  var un=gv('f_unidades'),dias=getDias(),tipo=gv('f_tipo'),tarifa=num('f_tarifa'),g=generoPct(),vtypes=tiposVehiculo();
+  var un=gv('f_unidades'),dias=getDias(),tipo=gv('f_tipo'),g=generoPct(),vtypes=tiposVehiculo();
   var prom=garantizadoActual(),entregado=num('k_plays')||tot.tp,pct=prom>0?Math.round(entregado/prom*100):0;
   var L=[];
   L.push('Cliente: '+(gv('f_cliente')||'(sin nombre)'));
   L.push('Campaña: '+(gv('f_campana')||'(sin nombre)'));
-  L.push('Periodo: '+(gv('f_inicio')||'?')+' a '+(gv('f_fin')||'?')+' ('+(dias||'?')+' días)');
+  L.push('Periodo: '+periodoTexto()+' ('+(dias||'?')+' días)');
   L.push('Unidades: '+(un||'?')+' · tipo de pantalla: '+tipo);
   L.push('Emisiones: '+(gv('k_plays')||'—'));
   L.push('Impresiones: '+(gv('k_impr')||'—'));
@@ -1020,7 +1038,7 @@ function recolectarDatos(){
   if(m.frecuencia!=null)L.push('Frecuencia media (OTS): '+fmt1(m.frecuencia)+'x');
   if(m.impr>0&&m.plays>0)L.push('Espectadores promedio por reproducción: '+fmt1(m.impr/m.plays)+' (impresiones ÷ reproducciones)');
   if(m.imprDia!=null)L.push('Impresiones promedio por día: '+fmt(m.imprDia));
-  L.push('Cumplimiento: '+fmt(entregado)+' entregadas vs '+fmt(prom)+' garantizadas = '+pct+'%');var __v=entregado-prom;if(prom>0&&__v>0)L.push('Valor agregado (optimización): +'+fmt(__v)+' salidas entregadas por encima de lo garantizado (+'+Math.round(__v/prom*100)+'%), sin costo extra para el cliente.');else if(prom>0&&__v<0)L.push('Entrega por debajo de lo garantizado: '+fmt(-__v)+' salidas menos.');if(prom>0&&__v!==0){var __st=incluidas().reduce(function(a,f){return a+tarifaEstacion(f);},0),__val=Math.round(__st*Math.abs(__v)/prom);if(__val>0)L.push((__v>0?'Optimización en pesos: $':'Pérdida estimada en pesos: $')+fmt(__val)+' ('+Math.round(Math.abs(__v)/prom*100)+'% de '+(__v>0?'sobre-entrega':'incumplimiento')+' frente a lo garantizado). Destácalo.');}
+  L.push('Cumplimiento: '+fmt(entregado)+' entregadas vs '+fmt(prom)+' garantizadas = '+pct+'%');var __v=entregado-prom;if(prom>0&&__v>0)L.push('Valor agregado (optimización): +'+fmt(__v)+' salidas entregadas por encima de lo garantizado (+'+Math.round(__v/prom*100)+'%), sin costo extra para el cliente.');else if(prom>0&&__v<0)L.push('Entrega por debajo de lo garantizado: '+fmt(-__v)+' salidas menos.');
   if(modoAudiencia()==='vehiculos'&&vtypes){L.push('Tipo de vehículo: '+vtypes.map(function(v){return v.name+' '+fmt1(v.pct)+'% ('+fmt(v.count)+')';}).join(', '));}else if(g)L.push('Género: '+fmt1(g.h)+'% hombres / '+fmt1(g.m)+'% mujeres');
   var inc=incluidas();
   if(inc.length){
@@ -1059,10 +1077,10 @@ function snapshotCampana(){
   var m=metricas(),tot=actualizarTotales(),un=parseInt(gv('f_unidades'),10)||0,dias=getDias()||0,g=generoPct();
   var prom=garantizadoActual(),pct=prom>0?Math.round(tot.tp/prom*100):0;
   return {id:Date.now(),guardado:new Date().toISOString(),
-    cliente:gv('f_cliente')||'(sin nombre)',campana:gv('f_campana')||'',ini:gv('f_inicio'),fin:gv('f_fin'),
+    cliente:gv('f_cliente')||'(sin nombre)',campana:gv('f_campana')||'',ini:gv('f_inicio'),fin:gv('f_fin'),rangos:obtenerRangos(),
     dias:dias,unidades:un,tipo:gv('f_tipo'),
     plays:tot.tp,impr:tot.ti,views:num('k_views')||null,dwell:num('k_dwell')||null,
-    frecuencia:m.frecuencia,alcance:m.alcance,cpm:m.cpm,valorTarifa:m.valorTarifa,
+    frecuencia:m.frecuencia,alcance:m.alcance,
     prometido:prom,entregado:tot.tp,cumplimiento:pct,genero:g?{h:g.h,m:g.m}:null};
 }
 function guardarEnHistorial(){
@@ -1080,16 +1098,15 @@ function pintarHistorial(){
   if(!arr.length){cont.innerHTML='';if(vac)vac.style.display='';return;}
   if(vac)vac.style.display='none';
   var rows=arr.map(function(c){
-    var per=(c.ini||'').slice(0,10)+(c.fin?' → '+(c.fin||'').slice(0,10):'');
+    var per=(c.rangos||[{inicio:c.ini,fin:c.fin}]).map(function(r){return (r.inicio||'')+' → '+(r.fin||'');}).join('; ');
     return '<tr><td class="cli">'+escA(c.cliente)+(c.campana?'<div style="font-weight:400;color:#7A828C;font-size:11px">'+escA(c.campana)+'</div>':'')+'</td>'+
       '<td>'+per+'</td>'+
       '<td class="n">'+fmt(c.plays)+'</td>'+
       '<td class="n">'+fmt(c.impr)+'</td>'+
-      '<td class="n">'+(c.cpm!=null?fmtCOP(c.cpm):'—')+'</td>'+
       '<td class="n">'+(c.cumplimiento||0)+'%</td>'+
       '<td style="text-align:right"><button class="hist-del" onclick="borrarHistorial('+c.id+')">Borrar</button></td></tr>';
   }).join('');
-  cont.innerHTML='<div style="overflow-x:auto"><table class="hist-tbl"><thead><tr><th>Cliente / campaña</th><th>Periodo</th><th class="n">Reprod.</th><th class="n">Impresiones</th><th class="n">CPM</th><th class="n">Cumpl.</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  cont.innerHTML='<div style="overflow-x:auto"><table class="hist-tbl"><thead><tr><th>Cliente / campaña</th><th>Periodo</th><th class="n">Reprod.</th><th class="n">Impresiones</th><th class="n">Cumpl.</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function getKey(){
   var f=document.getElementById('f_gemini_key');
@@ -1238,14 +1255,68 @@ function generoBloque(g){
 function donutGenero(g){return generoBloque(g);}
 function barsDiario(serie,H){
   H=H||162;
-  if(!serie||!serie.length)return '<div style="font-size:11px;color:#9AA3AE;padding:'+(H/3)+'px 0;text-align:center">Sin datos — carga el archivo.</div>';
-  var W=560,pad=24,maxV=Math.max.apply(null,serie.map(function(d){return d.val;}));
-  var n=serie.length,gap=(W-pad*2)/n,bw=gap*0.66,bars='',labels='';
-  serie.forEach(function(d,i){var x=pad+i*gap+(gap-bw)/2,h=(maxV>0?d.val/maxV:0)*(H-pad*2),y=H-pad-h;
-    bars+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" fill="'+CONFIG.COLOR.azul+'"/>';
-    if(n<=20||i%2===0){var dd=d.lbl||(d.fecha||'').slice(0,5);
-      labels+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-pad+13)+'" text-anchor="middle" font-size="8.5" fill="#9AA3AE">'+dd+'</text>';}});
-  return '<svg viewBox="0 0 '+W+' '+(H+4)+'" width="100%"><line x1="'+pad+'" y1="'+(H-pad)+'" x2="'+(W-pad)+'" y2="'+(H-pad)+'" stroke="#E3E8EE"/>'+bars+labels+'</svg>';}
+
+  if(!serie||!serie.length){
+    return '<div style="font-size:11px;color:#9AA3AE;padding:'+
+      (H/3)+'px 0;text-align:center">Sin datos — carga el archivo.</div>';
+  }
+
+  var W=560,arriba=16,abajo=24,derecha=16;
+  var maxV=Math.max.apply(null,serie.map(function(d){return d.val;}));
+
+  // Escala del eje Y con intervalos fáciles de leer.
+  var pasoBase=Math.max(maxV,1)/4;
+  var potencia=Math.pow(10,Math.floor(Math.log(pasoBase)/Math.LN10));
+  var proporcion=pasoBase/potencia;
+  var paso=Math.max(1,
+    (proporcion<=1?1:proporcion<=2?2:proporcion<=5?5:10)*potencia
+  );
+  var techo=Math.max(paso,Math.ceil(maxV/paso)*paso);
+  var divisiones=Math.round(techo/paso);
+
+  // Espacio para que los números del eje Y no queden cortados.
+  var izquierda=Math.max(52,fmt(techo).length*6+14);
+  var base=H-abajo,alto=base-arriba;
+  var ancho=W-izquierda-derecha;
+  var n=serie.length,gap=ancho/n,bw=gap*0.66;
+  var barras='',etiquetas='',ejeY='';
+
+  for(var j=0;j<=divisiones;j++){
+    var valor=j*paso;
+    var y=base-(valor/techo)*alto;
+
+    ejeY+='<line x1="'+izquierda+'" y1="'+y.toFixed(1)+
+      '" x2="'+(W-derecha)+'" y2="'+y.toFixed(1)+
+      '" stroke="#E3E8EE"/>';
+
+    ejeY+='<text x="'+(izquierda-8)+'" y="'+(y+3).toFixed(1)+
+      '" text-anchor="end" font-size="9" fill="#9AA3AE">'+
+      fmt(valor)+'</text>';
+  }
+
+  ejeY+='<line x1="'+izquierda+'" y1="'+arriba+
+    '" x2="'+izquierda+'" y2="'+base+'" stroke="#9AA3AE"/>';
+
+  serie.forEach(function(d,i){
+    var x=izquierda+i*gap+(gap-bw)/2;
+    var h=Math.max(0,d.val)/techo*alto;
+    var y=base-h;
+
+    barras+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+
+      '" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+
+      '" rx="2" fill="'+CONFIG.COLOR.azul+'"/>';
+
+    if(n<=20||i%2===0){
+      var dd=d.lbl||(d.fecha||'').slice(0,5);
+      etiquetas+='<text x="'+(x+bw/2).toFixed(1)+
+        '" y="'+(base+13)+'" text-anchor="middle" font-size="8.5"'+
+        ' fill="#9AA3AE">'+dd+'</text>';
+    }
+  });
+
+  return '<svg viewBox="0 0 '+W+' '+(H+4)+'" width="100%">'+
+    ejeY+barras+etiquetas+'</svg>';
+}
 function ajustarPaginas(){
   var pages=document.querySelectorAll('#reporte .page');
   for(var i=0;i<pages.length;i++){
@@ -1296,13 +1367,8 @@ function construirReporte(){
   var promAuto=garTot>0?garTot:garantizadoActual(),promEd=parseNum(document.getElementById('c_prom').value);
   var entregadoR=tot.tp||parseNum(document.getElementById('k_plays').value);
   var prom=(!isNaN(promEd)&&promEd>0)?promEd:promAuto,pct=prom>0?Math.round(entregadoR/prom*100):0,diff=entregadoR-prom;
-  /* Valor económico de la sobre-entrega o del faltante.
-     Se calcula con la tarifa total cargada para las pantallas incluidas y
-     el porcentaje de diferencia frente a las salidas garantizadas. */
-  var sumTarifa=incluidas().reduce(function(a,f){return a+tarifaEstacion(f);},0),
-      variacionP=(prom>0&&diff!==0&&sumTarifa>0)?Math.round(sumTarifa*Math.abs(diff)/prom):0,
-      tipoVariacion=diff>0?'optimizacion':(diff<0?'perdida':'');
-  var g=generoPct(),m=metricas(),fechas=(ini&&fin)?(fechaTxt(ini)+' – '+fechaTxt(fin)):'—',hoy=new Date().toLocaleDateString('es-CO');
+
+  var g=generoPct(),m=metricas(),fechas=periodoTexto(),hoy=new Date().toLocaleDateString('es-CO');
   function head(){return '<div class="r-head"><img src="'+STATE.logo+'"><div class="rh"><b>i·Co medios</b><span>Informe de campaña · DOOH</span></div><div class="rmeta">Generado: '+hoy+'</div></div>';}
   function foot(p){return '<div class="r-foot"><span>i·Co medios</span><span>'+cli+(camp?' — '+camp:'')+'</span><span>Pág. '+p+' de 2</span></div>';}
   function bt(icon,txt){
@@ -1338,7 +1404,7 @@ function construirReporte(){
     '<div class="r-sec">'+bt('target','Cumplimiento de emisiones')+'<div class="r-cumpl">'+
       '<div class="rc"><div class="l">Garantizado</div><div class="v">'+fmt(prom)+'</div></div>'+
       '<div class="rc"><div class="l">Entregado</div><div class="v">'+fmt(entregadoR)+'</div></div>'+
-      '<div class="rc hero"><div class="l">Cumplimiento</div><div class="v">'+pct+'%</div><span class="cm-pill '+cmCls+'">'+cmLbl+'</span><div class="x">'+(diff>0?'+'+fmt(diff)+' salidas de valor agregado':(diff<0?fmt(diff)+' por debajo':'Sin diferencia'))+'</div>'+(variacionP>0?(tipoVariacion==='optimizacion'?'<div class="x" style="color:var(--lima);font-weight:700">$'+fmt(variacionP)+' en optimización</div>':'<div class="x" style="color:#ff6b6b;font-weight:700">$'+fmt(variacionP)+' de pérdida estimada</div>'):'')+'</div></div></div>'+
+      '<div class="rc hero"><div class="l">Cumplimiento</div><div class="v">'+pct+'%</div><span class="cm-pill '+cmCls+'">'+cmLbl+'</span><div class="x">'+(diff>0?'+'+fmt(diff)+' salidas de valor agregado':(diff<0?fmt(diff)+' por debajo':'Sin diferencia'))+'</div>'+'</div></div></div>'+
     ((STATE.diario&&STATE.diario.length)||(STATE.porHora&&STATE.porHora.length)?
       '<div class="r-sec">'+bt('cal','Impresiones')+'<div class="charts2">'+
         '<div class="chart-card"><h4>Distribución de impresiones por día</h4><div class="chart-body">'+barsDiario(STATE.diario,178)+'</div></div>'+
@@ -1379,7 +1445,7 @@ function construirReporte(){
     })()+
     '</div>'+
     '<div class="r-sec">'+bt('doc','Análisis de la campaña')+'<div class="r-anal-box"><div class="r-analisis">'+(document.getElementById('f_analisis').value||'Genera el análisis con IA o el borrador automático.').replace(/</g,'&lt;')+'</div></div></div>'+'<div class="r-sec">'+bt('book','Glosario')+'<div class="glist">'+
-      gli('play','Emisión<span class="glen"> · Plays</span>','Veces que el contenido salió al aire en la pantalla.')+gli('eye','Impresión<span class="glen"> · Impressions</span>','Personas o vehículos frente a la pantalla con oportunidad de ver el contenido.')+(vehMode==='vehiculos'?gli('user','Conteo de vehículos<span class="glen"> · Vehicle count</span>','Vehículos detectados por el sensor; permite dimensionar la audiencia vehicular frente a la pantalla.'):gli('user','Género<span class="glen"> · Gender split</span>','Distribución de la audiencia por género detectada por el sensor.'))+gli('clock','Permanencia<span class="glen"> · Dwell time</span>','Tiempo promedio que una persona estuvo frente a la pantalla.')+gli('cal','Impresiones por día y hora','Cómo se repartió la entrega a lo largo de la campaña: en qué días y franjas horarias se concentró el impacto.')+gli('target','Optimización<span class="glen"> · Valor agregado</span>','Emisiones entregadas por encima de lo garantizado, sin costo extra, y su valor en pesos.')+'</div></div>'+
+      gli('play','Emisión<span class="glen"> · Plays</span>','Veces que el contenido salió al aire en la pantalla.')+gli('eye','Impresión<span class="glen"> · Impressions</span>','Personas o vehículos frente a la pantalla con oportunidad de ver el contenido.')+(vehMode==='vehiculos'?gli('user','Conteo de vehículos<span class="glen"> · Vehicle count</span>','Vehículos detectados por el sensor; permite dimensionar la audiencia vehicular frente a la pantalla.'):gli('user','Género<span class="glen"> · Gender split</span>','Distribución de la audiencia por género detectada por el sensor.'))+gli('clock','Permanencia<span class="glen"> · Dwell time</span>','Tiempo promedio que una persona estuvo frente a la pantalla.')+gli('cal','Impresiones por día y hora','Cómo se repartió la entrega a lo largo de la campaña: en qué días y franjas horarias se concentró el impacto.')+gli('target','Optimización<span class="glen"> · Valor agregado</span>','Emisiones entregadas por encima de lo garantizado.')+'</div></div>'+
     '</div>'+foot(2)+'</div>';
   return pg1+pg2;
 }
