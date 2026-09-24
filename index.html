@@ -145,6 +145,11 @@
   .r-head .rmeta{text-align:right;font-size:11px;color:var(--gris)}
   .r-foot{margin-top:auto;border-top:1px solid var(--linea);padding-top:8px;display:flex;justify-content:space-between;font-size:10px;color:var(--gris-claro)}
   .r-title{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:3px 0 4px;line-height:1.02;color:#fff}
+  .r-hero-l{min-width:0;flex:1}
+  .r-pantallas{margin-top:13px;padding-top:11px;border-top:1px solid rgba(255,255,255,.23)}
+  .r-pantallas-label{font-size:8.5px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#C4D600;margin-bottom:7px}
+  .r-pantallas-list{display:flex;flex-wrap:wrap;gap:5px}
+  .r-pantalla{font-size:10px;line-height:1.35;color:#fff;padding:4px 9px;border:1px solid rgba(255,255,255,.27);border-radius:5px;background:rgba(255,255,255,.09);overflow-wrap:anywhere;max-width:100%}
   .r-sub{font-size:12.5px;color:#cfe2f5;margin:0}
   .r-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;background:#005EB8;border-radius:14px;padding:20px 24px;position:relative}
   .r-eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#9FC4E8}
@@ -322,10 +327,15 @@
       <div class="field"><label>Cliente / Anunciante</label><input id="f_cliente" type="text" placeholder="Escribe el nombre del cliente" oninput="recalcular()"></div>
       <div class="field"><label>Nombre de la campaña</label><input id="f_campana" type="text" placeholder="Escribe el nombre de la campaña" oninput="recalcular()"></div>
       <div class="field"><label>Unidades comerciales <span class="en">· pantallas</span></label>
-        <input id="f_unidades" type="number" min="1" step="1" placeholder="Número de pantallas" oninput="recalcular()"><div class="sub">Un Megamupi de doble pantalla cuenta como 1.</div></div>
+        <input id="f_unidades" type="number" min="1" step="1" placeholder="Número de pantallas" oninput="recalcular()"></div>
       <div class="field"><label>Fecha de inicio</label><input id="f_inicio" type="date" oninput="recalcular()"></div>
       <div class="field"><label>Fecha de cierre</label><input id="f_fin" type="date" oninput="recalcular()"></div>
       <div class="field calc"><label>Días de campaña <span class="en">· automático</span></label><input id="f_dias" type="text" readonly placeholder="—"></div>
+    </div>
+    <div class="field" style="margin-top:16px">
+      <label>Pantallas incluidas en el informe</label>
+      <textarea id="f_pantallas" rows="2" placeholder="Pantalla Andes; Tótem; CC Santafé" oninput="generarAnalisis()"></textarea>
+      <div class="sub">Separa los nombres con punto y coma o escribe uno por línea. Aparecerán en el encabezado del informe.</div>
     </div>
     <div id="rangos_extra"></div>
     <button type="button" class="btn btn-ghost" style="margin-top:12px" onclick="agregarRango()">+ Agregar rango de fechas</button>
@@ -333,7 +343,7 @@
   </section>
 
   <section class="card">
-    <div class="sec-head"><div class="sec-num">2</div><h2>Indicadores principales</h2><span class="hint">Los copias de las tarjetas de Quividi</span></div>
+    <div class="sec-head"><div class="sec-num">2</div><h2>Indicadores principales</h2><span class="hint">Se toman del pantallazo de indicadores de Quividi; Excel no los modifica</span></div>
     <div class="grid g-4">
       <div class="field"><label>Emisiones <span class="en">· Total plays</span></label><input id="k_plays" type="text" placeholder="76.400" oninput="recalcular()"></div>
       <div class="field"><label>Impresiones <span class="en">· Impressions</span></label><input id="k_impr" type="text" placeholder="1.490.000" oninput="recalcular()"></div>
@@ -360,28 +370,26 @@
     <p class="note" style="margin-top:14px">La app lee archivos <b>CSV</b> y <b>Excel</b> (.xlsx, .xls). Exporta desde Quividi en el formato que prefieras.</p>
   </section>
 
-  <section class="card" id="sec_cuadro" style="display:none">
-    <div class="sec-head"><div class="sec-num">4</div><h2>Cuadro de referencias</h2><span class="hint">Carga automática editable: modifica nombres y cifras, agrega o elimina referencias</span></div>
+  <section class="card" id="sec_cuadro">
+    <div class="sec-head"><div class="sec-num">4</div><h2>Distribución de emisiones</h2><span class="hint">Carga automática editable: modifica nombres y cifras, agrega o elimina filas</span></div>
+    <div class="field" style="max-width:340px;margin-bottom:14px">
+      <label>Organizar distribución</label>
+      <select id="f_distribucion" onchange="actualizarDistribucion()">
+        <option value="referencia">Por referencia</option>
+        <option value="pantalla">Por pantalla</option>
+      </select>
+      <div class="sub">Carga datos del tipo elegido o edita cada fila con su nombre y emisiones correspondientes. Cambiar esta opción conserva las filas; no redistribuye las cifras automáticamente.</div>
+    </div>
     <div class="tbl-wrap"><table id="tabla">
-      <thead><tr><th style="width:42px">Incluir</th><th>Referencia</th><th class="num">Emisiones</th><th class="num">Impresiones</th><th style="width:140px">Calidad</th><th>Acciones</th></tr></thead>
+      <thead><tr><th style="width:42px">Incluir</th><th id="th_distribucion">Referencia</th><th class="num">Emisiones garantizadas</th><th class="num">Emisiones entregadas</th><th style="width:140px">Calidad</th><th>Acciones</th></tr></thead>
       <tbody id="tbody"></tbody>
-      <tfoot><tr><td></td><td>Total incluido</td><td class="num" id="t_plays">—</td><td class="num" id="t_impr">—</td><td></td><td></td></tr></tfoot>
+      <tfoot><tr><td></td><td>Total incluido</td><td class="num" id="t_garant">—</td><td class="num" id="t_plays">—</td><td></td><td></td></tr></tfoot>
     </table></div>
     <div class="quality" id="quality"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
-      <button type="button" class="btn btn-ghost" onclick="agregarReferencia()">+ Agregar referencia</button>
-      <button type="button" class="btn btn-ghost" onclick="unificarReferencias()">Unificar referencias incluidas</button>
+      <button type="button" class="btn btn-ghost" id="btn_agregar_fila" onclick="agregarReferencia()">+ Agregar referencia</button>
+      <button type="button" class="btn btn-ghost" id="btn_unificar_filas" onclick="unificarReferencias()">Unificar referencias incluidas</button>
     </div>
-  </section>
-
-  <section class="card" id="sec_cpm" style="display:none">
-    <div class="sec-head"><div class="sec-num">4b</div><h2>Cuadro cuantitativo <span class="en">interno</span></h2><span class="hint">Garantizados editables. El multiplicador y la variación de emisiones se calculan solos.</span></div>
-    <div class="tbl-wrap"><table id="cuadro" class="cuadro-tbl">
-      <thead><tr><th>Site</th><th>Garantizados</th><th class="num"># SPOT</th><th class="num">Impresiones</th><th class="num">Mult.</th><th class="num">Optim.</th></tr></thead>
-      <tbody id="cuadro_body"></tbody>
-      <tfoot><tr id="cuadro_foot"></tr></tfoot>
-    </table></div>
-    <button class="btn btn-primary" onclick="exportarCuadroExcel()" style="margin-top:12px;padding:9px 18px;font-size:13px">Exportar cuadro a Excel</button>
   </section>
 
   <section class="card">
@@ -732,14 +740,9 @@ function cargarVehiculos(input){
     if(!res){var enc=((rows[0]||[]).join(' | ')||'(vacío)').slice(0,120);
       estado('No reconocí la distribución de vehículos de "'+f.name+'". Revisa que el archivo tenga los tipos de vehículo en una fila y sus conteos debajo.',true);return;}
     STATE.vehiculos=res;STATE.genero=null;marcarDrop('drop_gender',f.name);
-    /* En el formato de distribución de Quividi, la suma de las categorías
-       corresponde al conteo total de vehículos. Lo llevamos automáticamente
-       al KPI para evitar que el usuario tenga que digitarlo dos veces. */
     var totalVeh=res.reduce(function(a,x){return a+x.count;},0);
-    var inp=document.getElementById('k_audience');
-    if(inp&&totalVeh>0){inp.value=agrupar(String(Math.round(totalVeh)));resalta(inp);}
     generarAnalisis();
-    estado('Distribución de vehículos cargada: '+res.length+' categorías · total '+fmt(totalVeh)+' vehículos.');
+    estado('Distribución de vehículos cargada: '+res.length+' categorías · '+fmt(totalVeh)+' registros en la distribución. Los indicadores del pantallazo se conservan.');
   });
 }
 function cargarPerfilAudiencia(input){
@@ -778,42 +781,65 @@ function cargarHora(input){
 function cargarOtro(input,t){var f=input.files[0];if(!f)return;
   leerArchivo(f,function(rows){STATE.otros[t]=rows;marcarDrop('drop_extra',f.name);estado('Archivo extra recibido (se usará más adelante).');});}
 function marcarDrop(id,n){var d=document.getElementById(id);d.classList.add('ok');d.querySelector('.dt span').textContent=n;d.querySelector('.ic').textContent='✓';}
+function modoDistribucion(){return gv('f_distribucion')==='pantalla'?'pantalla':'referencia';}
+function etiquetaDistribucion(plural){return modoDistribucion()==='pantalla'?(plural?'pantallas':'Pantalla'):(plural?'referencias':'Referencia');}
+function actualizarDistribucion(){
+  document.getElementById('th_distribucion').textContent=etiquetaDistribucion(false);
+  document.getElementById('btn_agregar_fila').textContent='+ Agregar '+modoDistribucion();
+  document.getElementById('btn_unificar_filas').textContent='Unificar '+etiquetaDistribucion(true)+' incluidas';
+  pintarTabla();generarAnalisis();recalcular();
+}
+function escaparTexto(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function nombresPantallas(){
+  var nombres=gv('f_pantallas').split(/[;\n]+/).map(function(n){return n.trim();}).filter(Boolean);
+  if(!nombres.length&&modoDistribucion()==='pantalla')nombres=incluidas().map(function(f){return f.nombre.trim();}).filter(Boolean);
+  return nombres.filter(function(n,i,a){return a.indexOf(n)===i;});
+}
+function encabezadoPantallas(){
+  var nombres=nombresPantallas();if(!nombres.length)return '';
+  return '<div class="r-pantallas"><div class="r-pantallas-label">Pantallas incluidas</div><div class="r-pantallas-list">'+nombres.map(function(n){return '<span class="r-pantalla">'+escaparTexto(n)+'</span>';}).join('')+'</div></div>';
+}
+function totalGarantizadoDistribucion(){
+  var inc=incluidas();
+  if(!inc.length||inc.some(function(f){return f.garant==null||!isFinite(f.garant);}))return null;
+  return inc.reduce(function(a,f){return a+f.garant;},0);
+}
+function sincronizarGarantizados(){
+  var total=totalGarantizadoDistribucion();
+  if(total!=null){document.getElementById('c_prom').value=fmt(total);STATE.promManual=total>0;}
+}
 function pintarTabla(){
   var tb=document.getElementById('tbody');tb.innerHTML='';
   STATE.filas.forEach(function(f,i){
     var tr=document.createElement('tr');tr.className=(f.incluir?'':'off')+(f.flag?' flag':'');
     tr.innerHTML='<td style="text-align:center"><input type="checkbox" class="chk" '+(f.incluir?'checked':'')+' onchange="toggleFila('+i+',this.checked)"></td>'+
       '<td class="nom"><input type="text" value="'+escA(f.nombre)+'" oninput="renombrar('+i+',this.value)"></td>'+
-      '<td class="num"><input type="text" inputmode="numeric" class="cq" value="'+fmt(f.plays)+'" oninput="editarReferencia('+i+',\'plays\',this)"></td><td class="num"><input type="text" inputmode="numeric" class="cq" value="'+fmt(f.impr)+'" oninput="editarReferencia('+i+',\'impr\',this)"></td>'+
+      '<td class="num"><input id="garant_fila_'+i+'" type="text" inputmode="numeric" class="cq" placeholder="Sin dato" value="'+(f.garant==null?'':fmt(f.garant))+'" oninput="editarReferencia('+i+',\'garant\',this)"></td><td class="num"><input type="text" inputmode="numeric" class="cq" value="'+fmt(f.plays)+'" oninput="editarReferencia('+i+',\'plays\',this)"></td>'+
       
       '<td>'+(f.flag?'<span class="warn-pill" title="Muchas reproducciones y casi cero impresiones: posible cámara caída.">⚠ Medición caída</span>':'<span style="color:var(--ok);font-size:12px">✓ OK</span>')+'</td><td><button type="button" class="btn btn-ghost" onclick="eliminarReferencia('+i+')">Eliminar</button></td>';
     tb.appendChild(tr);
   });
-  document.getElementById('sec_cuadro').style.display='';actualizarTotales();pintarCuadro();
+  document.getElementById('sec_cuadro').style.display='';actualizarTotales();
 }
-function escA(s){return String(s).replace(/"/g,'&quot;');}
-function toggleFila(i,v){STATE.filas[i].incluir=v;pintarTabla();generarAnalisis();recalcular();}
-function renombrar(i,v){STATE.filas[i].nombre=v;pintarCuadro();generarAnalisis();}
+function escA(s){return escaparTexto(s);}
+function toggleFila(i,v){STATE.filas[i].incluir=v;pintarTabla();sincronizarGarantizados();generarAnalisis();recalcular();}
+function renombrar(i,v){STATE.filas[i].nombre=v;generarAnalisis();}
 function editarReferencia(i,campo,input){
   var v=parseNum(input.value);
+  if(campo==='garant'&&input.value.trim()===''){input.setCustomValidity('');STATE.filas[i].garant=null;recalcular();generarAnalisis();return;}
   if(!isFinite(v)||v<0||Math.floor(v)!==v){input.setCustomValidity('Ingresa un número entero mayor o igual a cero.');document.getElementById('btn_pdf').disabled=true;return;}
-  input.setCustomValidity('');STATE.filas[i][campo]=v;sincronizarIndicadores();recalcular();generarAnalisis();
+  input.setCustomValidity('');STATE.filas[i][campo]=v;if(campo==='garant')sincronizarGarantizados();recalcular();generarAnalisis();
 }
 function agregarReferencia(){
-  STATE.filas.push({crudo:'Nueva referencia',nombre:'Nueva referencia',plays:0,impr:0,perm:null,garant:null,incluir:true,flag:false});
+  STATE.filas.push({crudo:'Nueva '+modoDistribucion(),nombre:'Nueva '+modoDistribucion(),plays:0,impr:0,perm:null,garant:null,incluir:true,flag:false});
   pintarTabla();recalcular();generarAnalisis();
 }
-function eliminarReferencia(i){STATE.filas.splice(i,1);pintarTabla();sincronizarIndicadores();recalcular();generarAnalisis();}
-function sincronizarIndicadores(){
-  var tot=actualizarTotales();
-  document.getElementById('k_plays').value=fmt(tot.tp);
-  document.getElementById('k_impr').value=fmt(tot.ti);
-}
+function eliminarReferencia(i){STATE.filas.splice(i,1);pintarTabla();sincronizarGarantizados();recalcular();generarAnalisis();}
 function unificarReferencias(){
   var inc=incluidas();if(inc.length<2)return;
-  var tot=actualizarTotales(),gar=inc.reduce(function(a,f){return a+garantEstacion(f);},0);
+  var tot=actualizarTotales(),gar=totalGarantizadoDistribucion();
   STATE.filas=STATE.filas.filter(function(f){return !f.incluir;});
-  STATE.filas.push({crudo:'Referencia unificada',nombre:gv('f_campana')||'Referencia unificada',plays:tot.tp,impr:tot.ti,perm:isNaN(tot.tpe)?null:tot.tpe,garant:gar,incluir:true,flag:false});
+  STATE.filas.push({crudo:etiquetaDistribucion(false)+' unificada',nombre:gv('f_campana')||etiquetaDistribucion(false)+' unificada',plays:tot.tp,impr:tot.ti,perm:isNaN(tot.tpe)?null:tot.tpe,garant:gar,incluir:true,flag:false});
   pintarTabla();recalcular();generarAnalisis();
 }
 function incluidas(){return STATE.filas.filter(function(f){return f.incluir;});}
@@ -822,9 +848,9 @@ function actualizarTotales(){
   var tp=inc.reduce(function(a,f){return a+f.plays;},0),ti=inc.reduce(function(a,f){return a+f.impr;},0);
   var pe=inc.filter(function(f){return f.perm!=null;}),tpe=pe.length?pe.reduce(function(a,f){return a+f.perm;},0)/pe.length:NaN;
   document.getElementById('t_plays').textContent=fmt(tp);
-  document.getElementById('t_impr').textContent=fmt(ti);
+  var tg=totalGarantizadoDistribucion();document.getElementById('t_garant').textContent=tg==null?'—':fmt(tg);
   var q=document.getElementById('quality'),off=STATE.filas.length-inc.length,fl=STATE.filas.filter(function(f){return f.flag;}).length;
-  q.innerHTML='<span class="q">'+inc.length+' referencias incluidas</span>'+(off>0?'<span class="q">'+off+' excluidas</span>':'')+(fl>0?'<span class="q warn">⚠ '+fl+' con posible medición caída</span>':'');
+  q.innerHTML='<span class="q">'+inc.length+' '+etiquetaDistribucion(true)+' incluidas</span>'+(off>0?'<span class="q">'+off+' excluidas</span>':'')+(fl>0?'<span class="q warn">⚠ '+fl+' con posible medición caída</span>':'');
   return {tp:tp,ti:ti,tpe:tpe};
 }
 function agregarRango(){
@@ -878,7 +904,7 @@ function recalcular(){
   actualizarCumplimiento();
   document.getElementById('btn_pdf').disabled=!(unidades>0&&dias>0&&incluidas().length>0&&!document.querySelector('#tabla input:invalid'));
   generarAnalisis();
-  pintarCuadro();
+  
 }
 function editProm(){
   var el=document.getElementById('c_prom');
@@ -886,75 +912,8 @@ function editProm(){
   STATE.promManual=(!isNaN(v)&&v>0);
   actualizarCumplimiento();
 }
-/* ===================== CUADRO CUANTITATIVO (interno) ===================== */
+/* Garantizados por fila de distribución. */
 function garantEstacion(f){return f.garant!=null?f.garant:0;}
-function cuadroFila(f){
-  var gar=garantEstacion(f),spot=f.plays||0,impr=f.impr||0;
-  return {gar:gar,spot:spot,impr:impr,mult:spot>0?impr/spot:0,optim:gar>0?(spot-gar)/gar:0};
-}
-function pintarCuadro(){
-  var tb=document.getElementById('cuadro_body');if(!tb)return;
-  var inc=incluidas(),sec=document.getElementById('sec_cpm');
-  if(!inc.length){if(sec)sec.style.display='none';return;}
-  if(sec)sec.style.display='';tb.innerHTML='';
-  var T={gar:0,spot:0,impr:0};
-  STATE.filas.forEach(function(f,i){
-    if(!f.incluir)return;var d=cuadroFila(f);T.gar+=d.gar;T.spot+=d.spot;T.impr+=d.impr;
-    var tr=document.createElement('tr');
-    tr.innerHTML='<td class="cq-nom">'+escA(f.nombre)+'</td>'+
-      '<td><input class="cq" type="text" value="'+agrupar(String(Math.round(d.gar)))+'" oninput="editCuadro('+i+',\'garant\',this.value)"></td>'+
-      '<td class="num">'+fmt(d.spot)+'</td><td class="num">'+fmt(d.impr)+'</td>'+
-      '<td class="num">'+fmt1(d.mult)+'</td>'+
-      '<td class="num '+(d.optim>=0?'pos':'neg')+'" id="cq_optim_'+i+'">'+(d.optim>=0?'+':'')+fmt1(d.optim*100)+'%</td>';
-    tb.appendChild(tr);
-  });
-  var tm=T.spot>0?T.impr/T.spot:0,to=T.gar>0?(T.spot-T.gar)/T.gar:0;
-  document.getElementById('cuadro_foot').innerHTML='<td>Total</td><td class="num">'+fmt(T.gar)+'</td><td class="num">'+fmt(T.spot)+'</td><td class="num">'+fmt(T.impr)+'</td><td class="num">'+fmt1(tm)+'</td><td class="num '+(to>=0?'pos':'neg')+'">'+(to>=0?'+':'')+fmt1(to*100)+'%</td>';
-}
-function editCuadro(i,campo,val){
-  STATE.filas[i][campo]=parseNum(val);
-  if(campo==='garant'){
-    var total=incluidas().reduce(function(a,f){
-      return a+(f.garant!=null&&!isNaN(f.garant)?f.garant:0);
-    },0);
-    var p=document.getElementById('c_prom');
-    if(p){
-      p.value=total>0?agrupar(String(Math.round(total))):'';
-      STATE.promManual=total>0;
-    }
-    actualizarCumplimiento();
-    actualizarFilaCuadro(i);
-    actualizarPieCuadro();
-    return;
-  }
-  pintarCuadro();
-}
-function actualizarFilaCuadro(i){
-  var f=STATE.filas[i];if(!f)return;
-  var d=cuadroFila(f),td=document.getElementById('cq_optim_'+i);
-  if(td){td.className='num '+(d.optim>=0?'pos':'neg');td.textContent=(d.optim>=0?'+':'')+fmt1(d.optim*100)+'%';}
-}
-function actualizarPieCuadro(){
-  var inc=incluidas(),T={gar:0,spot:0,impr:0};
-  inc.forEach(function(f){var d=cuadroFila(f);T.gar+=d.gar;T.spot+=d.spot;T.impr+=d.impr;});
-  var tm=T.spot>0?T.impr/T.spot:0,to=T.gar>0?(T.spot-T.gar)/T.gar:0;
-  var foot=document.getElementById('cuadro_foot');
-  if(foot)foot.innerHTML='<td>Total</td><td class="num">'+fmt(T.gar)+'</td><td class="num">'+fmt(T.spot)+'</td><td class="num">'+fmt(T.impr)+'</td><td class="num">'+fmt1(tm)+'</td><td class="num '+(to>=0?'pos':'neg')+'">'+(to>=0?'+':'')+fmt1(to*100)+'%</td>';
-}
-function exportarCuadroExcel(){
-  if(typeof XLSX==='undefined'){alert('No se pudo cargar el exportador.');return;}
-  var inc=incluidas();if(!inc.length){alert('Carga primero los datos de la campaña.');return;}
-  var H=['','Site','Spot Garantizados','# SPOT','IMPRESSIONS','Multiplicador Impresiones','OPTIMIZACIÓN SPOT'];
-  var aoa=[[],[],[],H],T={gar:0,spot:0,impr:0};
-  inc.forEach(function(f){var d=cuadroFila(f);T.gar+=d.gar;T.spot+=d.spot;T.impr+=d.impr;
-    aoa.push(['',f.nombre,d.gar,d.spot,d.impr,d.mult,d.optim]);});
-  var tm=T.spot>0?T.impr/T.spot:0,to=T.gar>0?(T.spot-T.gar)/T.gar:0;
-  aoa.push(['','Total',T.gar,T.spot,T.impr,tm,to]);
-  var wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(aoa),'PANTALLA');
-  XLSX.writeFile(wb,'Cuadro cuantitativo '+((gv('f_cliente')||'campaña').trim())+'.xlsx');
-}
-
 function generoPct(){if(!STATE.genero)return null;var t=STATE.genero.male+STATE.genero.female;if(t<=0)return null;return {h:STATE.genero.male/t*100,m:STATE.genero.female/t*100};}
 function garantizadoActual(){var el=document.getElementById('c_prom');var manual=parseNum(el?el.value:'');return manual>0?manual:NaN;}
 function tiposVehiculo(){return (modoAudiencia()==='vehiculos'&&STATE.vehiculos&&STATE.vehiculos.length)?STATE.vehiculos:null;}
@@ -971,10 +930,10 @@ function generarAnalisis(force){
   var tot=STATE.filas.length?actualizarTotales():{tp:NaN,ti:NaN,tpe:NaN};
   var g=generoPct(),vtypes=tiposVehiculo(),fchas=getDias()>0?('en los periodos '+periodoTexto()+' ('+getDias()+' días)'):'';
   var p=[];
-  var impr=num('k_impr')||tot.ti;
+  var impr=num('k_impr');
   p.push('La campaña '+cli+(fchas?', desarrollada '+fchas+',':'')+' tuvo presencia en algunas pantallas del circuito iCo'+(isNaN(impr)||!impr?'.':', alcanzando un total de '+fmt(impr)+' impresiones.'));
   if(modoAudiencia()==='vehiculos'&&vtypes&&vtypes.length){var vp=vehiculoPrincipal();p.push('La audiencia vehicular se distribuyó por tipo de vehículo; la categoría con mayor participación fue '+vp.name+' con '+fmt1(vp.pct)+'%.');}else if(g)p.push('La audiencia se compuso en un '+fmt1(g.m)+'% de mujeres y un '+fmt1(g.h)+'% de hombres.');
-  if(!isNaN(tot.tpe))p.push('El tiempo promedio de permanencia fue de '+fmt1(tot.tpe)+' segundos, un indicador favorable de exposición.');
+  if(!isNaN(num('k_dwell')))p.push('El tiempo promedio de permanencia fue de '+fmt1(num('k_dwell'))+' segundos, un indicador favorable de exposición.');
   var m=metricas();
   if(m.frecuencia!=null&&m.alcance!=null){p.push(modoAudiencia()==='vehiculos'?'Se registraron '+fmt(m.alcance)+' vehículos, con una frecuencia media de '+fmt1(m.frecuencia)+' impactos por vehículo.':'Se alcanzó a '+fmt(m.alcance)+' personas distintas, con una frecuencia media de '+fmt1(m.frecuencia)+' impactos por persona.');}
   var dias=getDias(),un=parseInt(document.getElementById('f_unidades').value,10);
@@ -1029,8 +988,11 @@ function recolectarDatos(){
   var L=[];
   L.push('Cliente: '+(gv('f_cliente')||'(sin nombre)'));
   L.push('Campaña: '+(gv('f_campana')||'(sin nombre)'));
+  if(nombresPantallas().length)L.push('Pantallas incluidas: '+nombresPantallas().join('; '));
+  L.push('Distribución organizada por: '+modoDistribucion());
   L.push('Periodo: '+periodoTexto()+' ('+(dias||'?')+' días)');
   L.push('Unidades: '+(un||'?')+' · tipo de pantalla: '+tipo);
+  L.push('FUENTE DE INDICADORES PRINCIPALES: tarjetas del pantallazo de Quividi. No sustituir estos valores por sumas de tablas o distribuciones; los footfall por contenido y los totales del archivo de vehículos pueden corresponder a otro alcance. Si falta un indicador, omítelo; no lo deduzcas de los archivos.');
   L.push('Emisiones: '+(gv('k_plays')||'—'));
   L.push('Impresiones: '+(gv('k_impr')||'—'));
   if(modoAudiencia()==='vehiculos')L.push(audienciaLabel()+' (alcance): '+(gv('k_audience')||'—'));
@@ -1042,7 +1004,7 @@ function recolectarDatos(){
   if(modoAudiencia()==='vehiculos'&&vtypes){L.push('Tipo de vehículo: '+vtypes.map(function(v){return v.name+' '+fmt1(v.pct)+'% ('+fmt(v.count)+')';}).join(', '));}else if(g)L.push('Género: '+fmt1(g.h)+'% hombres / '+fmt1(g.m)+'% mujeres');
   var inc=incluidas();
   if(inc.length){
-    L.push('Desempeño por referencia:');
+    L.push('Detalle de distribución por '+modoDistribucion()+' (no reemplaza los indicadores principales del pantallazo):');
     inc.forEach(function(f){
       L.push('  · '+f.nombre+': '+fmt(f.plays)+' emisiones, '+fmt(f.impr)+' impresiones'+(f.perm!=null?', '+fmt1(f.perm)+' s':'')+(f.garant!=null?', '+fmt(f.garant)+' garantizadas':''));
     });
@@ -1077,9 +1039,9 @@ function snapshotCampana(){
   var m=metricas(),tot=actualizarTotales(),un=parseInt(gv('f_unidades'),10)||0,dias=getDias()||0,g=generoPct();
   var prom=garantizadoActual(),pct=prom>0?Math.round(tot.tp/prom*100):0;
   return {id:Date.now(),guardado:new Date().toISOString(),
-    cliente:gv('f_cliente')||'(sin nombre)',campana:gv('f_campana')||'',ini:gv('f_inicio'),fin:gv('f_fin'),rangos:obtenerRangos(),
+    cliente:gv('f_cliente')||'(sin nombre)',campana:gv('f_campana')||'',ini:gv('f_inicio'),fin:gv('f_fin'),rangos:obtenerRangos(),pantallas:nombresPantallas(),distribucion:modoDistribucion(),
     dias:dias,unidades:un,tipo:gv('f_tipo'),
-    plays:tot.tp,impr:tot.ti,views:num('k_views')||null,dwell:num('k_dwell')||null,
+    plays:isNaN(num('k_plays'))?null:num('k_plays'),impr:isNaN(num('k_impr'))?null:num('k_impr'),views:isNaN(audienciaValor())?null:audienciaValor(),dwell:isNaN(num('k_dwell'))?null:num('k_dwell'),
     frecuencia:m.frecuencia,alcance:m.alcance,
     prometido:prom,entregado:tot.tp,cumplimiento:pct,genero:g?{h:g.h,m:g.m}:null};
 }
@@ -1168,7 +1130,7 @@ async function generarAnalisisIA(){
 }
 
 /* ============ LEER SCREENSHOTS DE QUIVIDI (IA visión) ============ */
-var PROMPT_VISION='Eres un extractor de datos. Te doy una o varias capturas del panel de Quividi (analítica DOOH). Para CADA imagen identifica qué muestra y extrae los números EXACTOS que ves; no inventes ni estimes; si un dato no está, ponlo en null.\n\nDevuelve ÚNICAMENTE un arreglo JSON (sin texto ni markdown), un objeto por imagen en el orden recibido, con esta forma:\n[{"tipo":"kpis|genero|vehiculos|diario|contenido|desconocido","kpis":{"plays":num|null,"impresiones":num|null,"vistas_unicas":num|null,"conteo_vehiculos":num|null,"permanencia_seg":num|null},"genero":{"hombres":num|null,"mujeres":num|null},"vehiculos":[{"tipo":"texto","conteo":num|null}],"diario":[{"fecha":"texto","valor":num}],"contenido":[{"nombre":"texto","plays":num|null,"impresiones":num|null,"permanencia_seg":num|null}]}]\n\nReglas:\n- kpis: tarjetas Total number of plays, Impressions, Unique sessions, Vehicle count/vehicles, Avg. dwell time (o equivalentes en español). Toma el número GRANDE, NUNCA el porcentaje de variación.\n- genero: tarjeta/gráfica Male/Female (Hombres/Mujeres). Pueden ser conteos o porcentajes; pásalos tal cual.\n- vehiculos: distribución por tipo de vehículo. Extrae cada categoría y su conteo o valor exacto visible.\n- diario: gráfica de barras por día. Lista cada barra con su fecha/etiqueta y su valor si es legible.\n- contenido: tabla por contenido/estación con plays e impresiones por fila.\n- Números con separador de miles devuélvelos como entero sin separador. La permanencia puede tener decimales.\n- Incluye solo la clave del tipo que corresponde a cada imagen.'
+var PROMPT_VISION='Eres un extractor de datos. Te doy una o varias capturas del panel de Quividi (analítica DOOH). Para CADA imagen identifica qué muestra y extrae los números EXACTOS que ves; no inventes ni estimes; si un dato no está, ponlo en null.\n\nDevuelve ÚNICAMENTE un arreglo JSON (sin texto ni markdown), un objeto por imagen en el orden recibido, con esta forma:\n[{"tipo":"kpis|genero|vehiculos|diario|contenido|desconocido","kpis":{"plays":num|null,"impresiones":num|null,"vistas_unicas":num|null,"conteo_vehiculos":num|null,"permanencia_seg":num|null},"genero":{"hombres":num|null,"mujeres":num|null},"vehiculos":[{"tipo":"texto","conteo":num|null}],"diario":[{"fecha":"texto","valor":num}],"contenido":[{"nombre":"texto","plays":num|null,"impresiones":num|null,"permanencia_seg":num|null}]}]\n\nReglas:\n- kpis: extrae exclusivamente los indicadores de las tarjetas del pantallazo principal. Nunca uses la suma de una tabla de contenido, footfall o vehicle split para completar estos indicadores. Si no se ve la tarjeta, usa null. Tarjetas Total number of plays, Impressions, Unique sessions, Vehicle count/vehicles, Avg. dwell time (o equivalentes en español). Toma el número GRANDE, NUNCA el porcentaje de variación.\n- genero: tarjeta/gráfica Male/Female (Hombres/Mujeres). Pueden ser conteos o porcentajes; pásalos tal cual.\n- vehiculos: distribución por tipo de vehículo. Extrae cada categoría y su conteo o valor exacto visible.\n- diario: gráfica de barras por día. Lista cada barra con su fecha/etiqueta y su valor si es legible.\n- contenido: tabla por contenido/estación con plays e impresiones por fila.\n- Números con separador de miles devuélvelos como entero sin separador. La permanencia puede tener decimales.\n- Incluye solo la clave del tipo que corresponde a cada imagen.'
 function archivoAB64(file){return new Promise(function(res,rej){var r=new FileReader();r.onload=function(){res(String(r.result).split(',')[1]);};r.onerror=function(){rej(new Error('no se pudo leer la imagen'));};r.readAsDataURL(file);});}
 function estadoVision(m,e){var x=document.getElementById('estado_vision');if(x){x.textContent=m;x.style.color=e?'#C0392B':'var(--lima-osc)';}}
 function resalta(el){if(!el)return;el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');}
@@ -1255,67 +1217,24 @@ function generoBloque(g){
 function donutGenero(g){return generoBloque(g);}
 function barsDiario(serie,H){
   H=H||162;
-
-  if(!serie||!serie.length){
-    return '<div style="font-size:11px;color:#9AA3AE;padding:'+
-      (H/3)+'px 0;text-align:center">Sin datos — carga el archivo.</div>';
-  }
-
-  var W=560,arriba=16,abajo=24,derecha=16;
-  var maxV=Math.max.apply(null,serie.map(function(d){return d.val;}));
-
-  // Escala del eje Y con intervalos fáciles de leer.
-  var pasoBase=Math.max(maxV,1)/4;
-  var potencia=Math.pow(10,Math.floor(Math.log(pasoBase)/Math.LN10));
-  var proporcion=pasoBase/potencia;
-  var paso=Math.max(1,
-    (proporcion<=1?1:proporcion<=2?2:proporcion<=5?5:10)*potencia
-  );
-  var techo=Math.max(paso,Math.ceil(maxV/paso)*paso);
-  var divisiones=Math.round(techo/paso);
-
-  // Espacio para que los números del eje Y no queden cortados.
-  var izquierda=Math.max(52,fmt(techo).length*6+14);
-  var base=H-abajo,alto=base-arriba;
-  var ancho=W-izquierda-derecha;
-  var n=serie.length,gap=ancho/n,bw=gap*0.66;
-  var barras='',etiquetas='',ejeY='';
-
+  if(!serie||!serie.length)return '<div style="font-size:11px;color:#9AA3AE;padding:'+(H/3)+'px 0;text-align:center">Sin datos — carga el archivo.</div>';
+  var W=560,arriba=16,abajo=24,derecha=16,maxV=Math.max.apply(null,serie.map(function(d){return d.val;}));
+  var pasoBase=Math.max(maxV,1)/4,potencia=Math.pow(10,Math.floor(Math.log(pasoBase)/Math.LN10)),proporcion=pasoBase/potencia;
+  var paso=Math.max(1,(proporcion<=1?1:proporcion<=2?2:proporcion<=5?5:10)*potencia),techo=Math.max(paso,Math.ceil(maxV/paso)*paso),divisiones=Math.round(techo/paso);
+  var izquierda=Math.max(52,fmt(techo).length*6+14),base=H-abajo,alto=base-arriba,ancho=W-izquierda-derecha;
+  var n=serie.length,gap=ancho/n,bw=gap*0.66,barras='',etiquetas='',ejeY='';
   for(var j=0;j<=divisiones;j++){
-    var valor=j*paso;
-    var y=base-(valor/techo)*alto;
-
-    ejeY+='<line x1="'+izquierda+'" y1="'+y.toFixed(1)+
-      '" x2="'+(W-derecha)+'" y2="'+y.toFixed(1)+
-      '" stroke="#E3E8EE"/>';
-
-    ejeY+='<text x="'+(izquierda-8)+'" y="'+(y+3).toFixed(1)+
-      '" text-anchor="end" font-size="9" fill="#9AA3AE">'+
-      fmt(valor)+'</text>';
+    var valor=j*paso,y=base-(valor/techo)*alto;
+    ejeY+='<line x1="'+izquierda+'" y1="'+y.toFixed(1)+'" x2="'+(W-derecha)+'" y2="'+y.toFixed(1)+'" stroke="#E3E8EE"/>';
+    ejeY+='<text x="'+(izquierda-8)+'" y="'+(y+3).toFixed(1)+'" text-anchor="end" font-size="9" fill="#9AA3AE">'+fmt(valor)+'</text>';
   }
-
-  ejeY+='<line x1="'+izquierda+'" y1="'+arriba+
-    '" x2="'+izquierda+'" y2="'+base+'" stroke="#9AA3AE"/>';
-
+  ejeY+='<line x1="'+izquierda+'" y1="'+arriba+'" x2="'+izquierda+'" y2="'+base+'" stroke="#9AA3AE"/>';
   serie.forEach(function(d,i){
-    var x=izquierda+i*gap+(gap-bw)/2;
-    var h=Math.max(0,d.val)/techo*alto;
-    var y=base-h;
-
-    barras+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+
-      '" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+
-      '" rx="2" fill="'+CONFIG.COLOR.azul+'"/>';
-
-    if(n<=20||i%2===0){
-      var dd=d.lbl||(d.fecha||'').slice(0,5);
-      etiquetas+='<text x="'+(x+bw/2).toFixed(1)+
-        '" y="'+(base+13)+'" text-anchor="middle" font-size="8.5"'+
-        ' fill="#9AA3AE">'+dd+'</text>';
-    }
+    var x=izquierda+i*gap+(gap-bw)/2,h=Math.max(0,d.val)/techo*alto,y=base-h;
+    barras+='<rect x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="2" fill="'+CONFIG.COLOR.azul+'"/>';
+    if(n<=20||i%2===0){var dd=d.lbl||(d.fecha||'').slice(0,5);etiquetas+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(base+13)+'" text-anchor="middle" font-size="8.5" fill="#9AA3AE">'+escaparTexto(dd)+'</text>';}
   });
-
-  return '<svg viewBox="0 0 '+W+' '+(H+4)+'" width="100%">'+
-    ejeY+barras+etiquetas+'</svg>';
+  return '<svg viewBox="0 0 '+W+' '+(H+4)+'" width="100%">'+ejeY+barras+etiquetas+'</svg>';
 }
 function ajustarPaginas(){
   var pages=document.querySelectorAll('#reporte .page');
@@ -1362,7 +1281,7 @@ function construirReporte(){
   var ini=document.getElementById('f_inicio').value,fin=document.getElementById('f_fin').value;
   var dias=getDias(),un=parseInt(document.getElementById('f_unidades').value,10),tot=actualizarTotales();
   function fmtKpi(v){var n=parseNum(v);return (v&&!isNaN(n))?fmt(n):(v||'');}
-  var kp=fmtKpi(document.getElementById('k_plays').value),ki=(tot.ti?fmt(tot.ti):fmtKpi(document.getElementById('k_impr').value)),kv=fmtKpi(document.getElementById('k_audience').value),kd=document.getElementById('k_dwell').value,vehMode=modoAudiencia(),vtypes=tiposVehiculo();
+  var kp=fmtKpi(document.getElementById('k_plays').value),ki=fmtKpi(document.getElementById('k_impr').value),kv=fmtKpi(document.getElementById('k_audience').value),kd=document.getElementById('k_dwell').value,vehMode=modoAudiencia(),vtypes=tiposVehiculo();
   var garTot=incluidas().reduce(function(a,f){return a+garantEstacion(f);},0);
   var promAuto=garTot>0?garTot:garantizadoActual(),promEd=parseNum(document.getElementById('c_prom').value);
   var entregadoR=tot.tp||parseNum(document.getElementById('k_plays').value);
@@ -1396,10 +1315,10 @@ function construirReporte(){
 
   /* PÁGINA 1 — portada + todos los datos + gráficas */
   var pg1='<div class="page">'+head()+'<div class="page-body">'+
-    '<div class="r-sec r-hero"><div class="r-hero-l"><div class="r-eyebrow">Informe de campaña</div><div class="r-title">'+cli+'</div><div class="r-sub">'+(camp?'Ref. '+camp+' · ':'')+fechas+' · '+(dias>0?dias+' días':'')+' · '+(un>0?un+(un==1?' elemento digital':' elementos digitales'):'')+'</div></div>'+
+    '<div class="r-sec r-hero"><div class="r-hero-l"><div class="r-eyebrow">Informe de campaña</div><div class="r-title">'+cli+'</div><div class="r-sub">'+(camp?'Ref. '+camp+' · ':'')+fechas+' · '+(dias>0?dias+' días':'')+' · '+(un>0?un+(un==1?' elemento digital':' elementos digitales'):'')+'</div>'+encabezadoPantallas()+'</div>'+
       (ki?'<div class="r-hero-r"><div class="r-hr-v">'+ki+'</div><div class="r-hr-l">Impresiones</div>'+'</div>':'')+'</div>'+
     '<div class="r-sec">'+bt('metricas','Indicadores principales')+'<div class="kpis">'+
-      kpi('play','Emisiones','Total spots',(tot.tp?fmt(tot.tp):(kp||'—')),'')+kpi('eye','Impresiones','Impressions',ki||'—','')+
+      kpi('play','Emisiones','Total spots',(kp||'—'),'')+kpi('eye','Impresiones','Impressions',ki||'—','')+
       (vehMode==='vehiculos'?kpi('user','Conteo de vehículos','Vehicle count',kv||'—',''):'')+kpi('clock','Permanencia','Avg. dwell time',(kd||'—'),'segundos')+'</div></div>'+
     '<div class="r-sec">'+bt('target','Cumplimiento de emisiones')+'<div class="r-cumpl">'+
       '<div class="rc"><div class="l">Garantizado</div><div class="v">'+fmt(prom)+'</div></div>'+
@@ -1414,7 +1333,7 @@ function construirReporte(){
 
   /* estación destacada (mayor volumen de impresiones) */
   var inc=incluidas(),champ=inc.length?inc.reduce(function(a,b){return (b.impr||0)>(a.impr||0)?b:a;}):null;
-  var champHTML=champ?'<div class="r-sec"><div class="r-highlight"><div class="rh-ic"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M1.0 6.5 L1.1 5.2 L1.3 4.9 L1.6 4.9 L22.4 7.1 L22.7 7.4 L22.9 8.0 L23.0 18.6 ZM20.8 19.1 L3.2 19.0 L2.9 18.7 L2.7 18.1 L2.6 7.7 L2.7 7.2 L2.9 7.0 L3.1 7.0 L20.8 8.6 L21.0 8.7 L21.2 8.9 L21.4 9.6 L21.4 18.0 L21.2 18.7 L21.0 19.0 L20.8 19.1 ZM12.0 8.0 L13.2 11.3 L16.8 11.5 L14.0 13.7 L15.0 17.1 L12.0 15.2 L9.0 17.1 L10.0 13.7 L7.2 11.5 L10.8 11.3 Z"/></svg></div><div><div class="rh-l">Referencia destacada</div><div class="rh-v">'+escA(champ.nombre)+'</div><div class="rh-x">'+fmt(champ.impr)+' impresiones'+(champ.perm!=null?' · '+fmt1(champ.perm)+' s de permanencia':'')+'</div></div></div></div>':'';
+  var champHTML=champ?'<div class="r-sec"><div class="r-highlight"><div class="rh-ic"><svg viewBox="0 0 24 24"><path fill-rule="evenodd" d="M1.0 6.5 L1.1 5.2 L1.3 4.9 L1.6 4.9 L22.4 7.1 L22.7 7.4 L22.9 8.0 L23.0 18.6 ZM20.8 19.1 L3.2 19.0 L2.9 18.7 L2.7 18.1 L2.6 7.7 L2.7 7.2 L2.9 7.0 L3.1 7.0 L20.8 8.6 L21.0 8.7 L21.2 8.9 L21.4 9.6 L21.4 18.0 L21.2 18.7 L21.0 19.0 L20.8 19.1 ZM12.0 8.0 L13.2 11.3 L16.8 11.5 L14.0 13.7 L15.0 17.1 L12.0 15.2 L9.0 17.1 L10.0 13.7 L7.2 11.5 L10.8 11.3 Z"/></svg></div><div><div class="rh-l">'+etiquetaDistribucion(false)+' destacada</div><div class="rh-v">'+escA(champ.nombre)+'</div><div class="rh-x">'+fmt(champ.impr)+' impresiones'+(champ.perm!=null?' · '+fmt1(champ.perm)+' s de permanencia':'')+'</div></div></div></div>':'';
 
   /* PÁGINA 2 — análisis destacado + detalle por estación + glosario */
   var pg2='<div class="page">'+head()+'<div class="page-body">'+
@@ -1431,17 +1350,19 @@ function construirReporte(){
         '<div class="chart-card audience-card"><h4>Distribución por género</h4><div class="chart-body">'+genInner+'</div></div>'+
       '</div>';
     })()+
-    '<div class="r-sec">'+bt('screen','Distribución por referencia')+
+    '<div class="r-sec">'+bt('screen','Distribución por '+modoDistribucion())+
     (function(){
-      var ic=incluidas();
-      var head='<thead><tr><th>Referencia</th><th class="n">Emisiones</th><th class="n">Impresiones</th></tr></thead>';
-      var fila=function(f){return '<tr><td>'+escA(f.nombre)+'</td><td class="n">'+fmt(f.plays)+'</td><td class="n">'+fmt(f.impr)+'</td></tr>';};
+      var ic=incluidas(),gar=totalGarantizadoDistribucion();
+      var head='<thead><tr><th>'+etiquetaDistribucion(false)+'</th><th class="n">Emisiones garantizadas</th><th class="n">Emisiones entregadas</th></tr></thead>';
+      var fila=function(f){return '<tr><td>'+escA(f.nombre)+'</td><td class="n">'+(f.garant==null?'—':fmt(f.garant))+'</td><td class="n">'+fmt(f.plays)+'</td></tr>';};
+      var totalGar=gar==null?'—':fmt(gar);
       if(ic.length<=10){
-        return '<table class="r-tbl">'+head+'<tbody>'+ic.map(fila).join('')+'</tbody><tfoot><tr><td>Total · '+ic.length+' referencias</td><td class="n">'+fmt(tot.tp)+'</td><td class="n">'+fmt(tot.ti)+'</td></tr></tfoot></table>';
+        return '<table class="r-tbl">'+head+'<tbody>'+ic.map(fila).join('')+'</tbody><tfoot><tr><td>Total · '+ic.length+' '+etiquetaDistribucion(true)+'</td><td class="n">'+totalGar+'</td><td class="n">'+fmt(tot.tp)+'</td></tr></tfoot></table>';
       }
       var mid=Math.ceil(ic.length/2);
       var half=function(rows){return '<table class="r-tbl est-half">'+head+'<tbody>'+rows.map(fila).join('')+'</tbody></table>';};
-      return '<div class="est-wrap">'+half(ic.slice(0,mid))+half(ic.slice(mid))+'</div>'+'<div class="est-tot2"><span>Total · '+ic.length+' estaciones</span><span>Emisiones '+fmt(tot.tp)+'</span><span>Impresiones '+fmt(tot.ti)+'</span></div>';
+      return '<div class="est-wrap">'+half(ic.slice(0,mid))+half(ic.slice(mid))+'</div><div class="est-tot2"><span>Total · '+ic.length+' '+etiquetaDistribucion(true)+'</span><span>Garantizadas '+totalGar+'</span><span>Entregadas '+fmt(tot.tp)+'</span></div>';
+
     })()+
     '</div>'+
     '<div class="r-sec">'+bt('doc','Análisis de la campaña')+'<div class="r-anal-box"><div class="r-analisis">'+(document.getElementById('f_analisis').value||'Genera el análisis con IA o el borrador automático.').replace(/</g,'&lt;')+'</div></div></div>'+'<div class="r-sec">'+bt('book','Glosario')+'<div class="glist">'+
